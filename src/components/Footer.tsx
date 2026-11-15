@@ -61,22 +61,22 @@ const SOURCES: Array<[string, string]> = [
 
 export default function Footer() {
   return (
-    <footer className="mt-20 border-t border-paper-3 bg-paper-2/60">
-      <div className="mx-auto max-w-6xl px-5 py-14">
-        <div className="grid gap-10 md:grid-cols-2">
+    <footer className="mt-12 border-t border-slate-200 bg-white/80 backdrop-blur">
+      <div className="mx-auto max-w-6xl px-4 lg:px-6 py-10">
+        <div className="grid gap-8 md:grid-cols-2">
           {/* Glossary */}
           <div>
-            <h3 className="mb-4 flex items-center gap-2 font-display text-lg font-semibold text-ink">
-              <BookOpen className="h-4 w-4 text-leaf" /> Plain-language glossary
+            <h3 className="mb-4 flex items-center gap-2 font-display text-base font-bold text-ink">
+              <BookOpen className="h-3.5 w-3.5 text-emerald-600" /> Plain-language glossary
             </h3>
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {GLOSSARY.map(([term, def]) => (
-                <details key={term} className="group rounded-xl border border-paper-3 bg-white/60 px-3.5 py-2.5">
-                  <summary className="cursor-pointer list-none text-xs font-semibold text-ink marker:hidden">
-                    <span className="mr-1.5 text-leaf">＋</span>
+                <details key={term} className="group rounded-xl border border-slate-100 bg-white px-3 py-2.5">
+                  <summary className="cursor-pointer list-none text-xs font-bold text-ink marker:hidden">
+                    <span className="mr-1.5 text-emerald-600">＋</span>
                     {term}
                   </summary>
-                  <p className="mt-1.5 text-[11px] leading-relaxed text-ink-3">{def}</p>
+                  <p className="mt-1 text-[10px] leading-relaxed text-ink-2">{def}</p>
                 </details>
               ))}
             </div>
@@ -84,37 +84,37 @@ export default function Footer() {
 
           {/* Sources & method */}
           <div>
-            <h3 className="mb-4 flex items-center gap-2 font-display text-lg font-semibold text-ink">
-              <Satellite className="h-4 w-4 text-water" /> Data & method
+            <h3 className="mb-4 flex items-center gap-2 font-display text-base font-bold text-ink">
+              <Satellite className="h-3.5 w-3.5 text-cyan-600" /> Data & method
             </h3>
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {SOURCES.map(([name, def]) => (
-                <div key={name} className="rounded-xl border border-paper-3 bg-white/60 px-3.5 py-2.5">
-                  <p className="flex items-center gap-1.5 text-xs font-semibold text-ink">
-                    <Database className="h-3 w-3 text-water" /> {name}
+                <div key={name} className="rounded-xl border border-slate-100 bg-white px-3 py-2.5">
+                  <p className="flex items-center gap-1.5 text-xs font-bold text-ink">
+                    <Database className="h-2.5 w-2.5 text-cyan-600" /> {name}
                   </p>
-                  <p className="mt-1 text-[11px] leading-relaxed text-ink-3">{def}</p>
+                  <p className="mt-1 text-[10px] leading-relaxed text-ink-2">{def}</p>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="mt-10 rounded-2xl border border-clay/30 bg-clay/5 px-4 py-3.5">
-          <p className="text-xs leading-relaxed text-ink-2">
-            <strong>FieldShift is a decision-support tool.</strong> It reveals patterns and possibilities from NASA
+        <div className="mt-8 rounded-xl border border-amber-100 bg-amber-soft px-4 py-3">
+          <p className="text-[10px] leading-relaxed text-amber-700">
+            <strong className="text-amber-800">FieldShift is a decision-support tool.</strong> It reveals patterns and possibilities from NASA
             Earth observations — it does not replace farmer judgement, local agricultural expertise, soil tests, or
             cultivar trials. Scores are comparative indications built on typical agronomy values; always validate
             suggestions with your local extension officer or agronomist.
           </p>
         </div>
 
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 text-[11px] text-ink-3">
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-2 text-[9px] text-ink-3">
           <p>
-            Built for the <strong>NASA International Space Apps Challenge 2026</strong> — challenge:{' '}
-            <em>Field Shift: Adapting Farms with NASA Data</em>. South Africa team.
+            Built for the <strong className="text-ink">NASA International Space Apps Challenge 2026</strong> — challenge:{' '}
+            <em className="text-ink-2">Field Shift: Adapting Farms with NASA Data</em>. South Africa team.
           </p>
-          <Chip tone="dark">Powered by NASA open data</Chip>
+          <Chip tone="slate">Powered by NASA open data</Chip>
         </div>
       </div>
     </footer>

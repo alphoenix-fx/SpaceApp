@@ -9,11 +9,12 @@ import { DiagnosticCard, Gauge } from './ui'
 //
 // Three simple gauges, each with a plain-language state and one actionable
 // tip. No charts, no raw index dumps.
+// ExtraUI theme: white card, emerald/amber/rose/cyan semantic accents.
 // ---------------------------------------------------------------------------
 
 interface SoilState {
   state: string
-  tone: 'leaf' | 'ochre' | 'clay' | 'water'
+  tone: 'emerald' | 'amber' | 'rose' | 'cyan'
   pct: number
   caption: string
   tip: string
@@ -32,32 +33,32 @@ function soilGauge(climate: ClimateFeatures, trend: DailyTrend | undefined): Soi
   if (ratio < 0.85) {
     return {
       state: 'Too dry',
-      tone: 'clay',
+      tone: 'rose',
       pct: Math.round(ratio * 100),
       caption: 'below the usual moisture for this month',
       tip: `Hold off on planting until moisture rises — the root zone is only ${pct}% full against a normal ${Math.round(
         normal * 100,
       )}% for ${MONTH_NAMES[month]}.`,
-      value: `${pct}% of the soil's water capacity`,
+      value: `${pct}% of water capacity`,
     }
   }
   if (ratio > 1.12) {
     return {
       state: 'Waterlogged',
-      tone: 'water',
+      tone: 'cyan',
       pct: Math.min(100, Math.round(ratio * 92)),
       caption: 'wetter than usual for this month',
       tip: 'Delay heavy machinery and watch for waterlogging in low spots — the soil bank is full and roots need air.',
-      value: `${pct}% of the soil's water capacity`,
+      value: `${pct}% of water capacity`,
     }
   }
   return {
     state: 'Optimal',
-    tone: 'leaf',
+    tone: 'emerald',
     pct: Math.round(ratio * 88),
     caption: 'in the normal band for this month',
     tip: `Good conditions for establishment — ${recent.rainMm} mm of rain in the last ${recent.days} observed days.`,
-    value: `${pct}% of the soil's water capacity`,
+    value: `${pct}% of water capacity`,
   }
 }
 
@@ -71,7 +72,7 @@ function plantGauge(ndvi: NdviPulse | null): SoilState | null {
   if (delta !== null && delta < -8) {
     return {
       state: 'Stressed',
-      tone: 'clay',
+      tone: 'rose',
       pct,
       caption: 'less green than in previous years',
       tip: `Canopy is ${Math.abs(Math.round(delta))}% less green than the same fortnight in previous years — plants are struggling, not the season.`,
@@ -81,7 +82,7 @@ function plantGauge(ndvi: NdviPulse | null): SoilState | null {
   if (delta !== null && delta > 8) {
     return {
       state: 'Thriving',
-      tone: 'leaf',
+      tone: 'emerald',
       pct,
       caption: 'greener than in previous years',
       tip: `Canopy is ${Math.round(delta)}% greener than the same fortnight in previous years — the crop is using the season well.`,
@@ -90,7 +91,7 @@ function plantGauge(ndvi: NdviPulse | null): SoilState | null {
   }
   return {
     state: 'Moderate',
-    tone: 'ochre',
+    tone: 'amber',
     pct,
     caption: 'in line with previous years',
     tip: 'Canopy looks normal for this time of year — no stress signal from the satellites yet.',
@@ -109,40 +110,40 @@ function outlookGauge(outlook: Outlook | null): SoilState | null {
   if (hot >= 4) {
     return {
       state: 'Heatwave watch',
-      tone: 'clay',
+      tone: 'rose',
       pct: Math.min(100, hot * 14),
       caption: `${hot} hot days above 32°C in 14 days`,
       tip: `Peak ${Math.round(outlook.maxTmax)}°C — irrigate before the hot spell and avoid spraying at midday.`,
-      value: `${rain} mm rain expected (normal ${normal} mm)`,
+      value: `${rain} mm expected (normal ${normal} mm)`,
     }
   }
   if (dry >= 7) {
     return {
       state: 'Dry spell',
-      tone: 'ochre',
+      tone: 'amber',
       pct: Math.min(100, dry * 12),
       caption: `${dry} days without useful rain`,
       tip: 'No rain in the next week or so — get the crop established now while there is still soil moisture.',
-      value: `${rain} mm rain expected (normal ${normal} mm)`,
+      value: `${rain} mm expected (normal ${normal} mm)`,
     }
   }
   if (rain >= normal * 1.3) {
     return {
       state: 'Wet coming',
-      tone: 'water',
+      tone: 'cyan',
       pct: 80,
       caption: `${rain} mm expected vs ${normal} mm normal`,
       tip: 'A wet fortnight ahead — good for germination, but watch for waterlogging and disease pressure.',
-      value: `${rain} mm rain expected (normal ${normal} mm)`,
+      value: `${rain} mm expected (normal ${normal} mm)`,
     }
   }
   return {
     state: 'Settled',
-    tone: 'leaf',
+    tone: 'emerald',
     pct: 60,
     caption: `${rain} mm expected vs ${normal} mm normal`,
     tip: `Roughly normal for this time of year — ${hot} hot day${hot === 1 ? '' : 's'} above 32°C in the outlook.`,
-    value: `${rain} mm rain expected (normal ${normal} mm)`,
+    value: `${rain} mm expected (normal ${normal} mm)`,
   }
 }
 
@@ -169,7 +170,7 @@ export default function FieldPulseCard({
       step="2"
       title="Live field pulse"
       sub="What the satellites and models say about this field right now."
-      icon={<Droplets className="h-5 w-5 text-water" />}
+      icon={<Droplets className="h-4 w-4 text-cyan-600" />}
     >
       <div className="grid gap-4 md:grid-cols-3">
         {soil ? (
@@ -185,8 +186,8 @@ export default function FieldPulseCard({
         ) : (
           <Gauge
             label="Root-zone soil moisture"
-            state="Unavailable"
-            tone="ochre"
+            state="No data"
+            tone="amber"
             value="—"
             tip="The soil-moisture model has not delivered an observation for this point yet."
             source="NASA POWER (GWETROOT)"
@@ -207,7 +208,7 @@ export default function FieldPulseCard({
           <Gauge
             label="Plant health (NDVI)"
             state="No signal"
-            tone="ochre"
+            tone="amber"
             value="—"
             tip="Satellite vegetation imagery for this exact point is not available (clouds or no recent pass)."
             source="MODIS Terra vegetation index"
@@ -227,8 +228,8 @@ export default function FieldPulseCard({
         ) : (
           <Gauge
             label="Heat & rainfall outlook"
-            state="Unavailable"
-            tone="ochre"
+            state="No data"
+            tone="amber"
             value="—"
             tip="The 14-day forecast service could not be reached — the season playbook below still applies."
             source="14-day forecast + NASA POWER normals"
@@ -236,17 +237,17 @@ export default function FieldPulseCard({
         )}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl bg-paper/60 px-3.5 py-2.5 text-[11px] text-ink-3">
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl border border-slate-100 bg-emerald-soft px-3.5 py-2.5 text-[10px] text-emerald-700">
         <span className="flex items-center gap-1.5">
-          <CloudRain className="h-3.5 w-3.5 text-water" />
+          <CloudRain className="h-3 w-3 text-cyan-600" />
           {trend ? `${trend.recent.rainMm} mm rain in the last ${trend.recent.days} observed days` : 'recent rain unknown'}
         </span>
         <span className="flex items-center gap-1.5">
-          <ThermometerSun className="h-3.5 w-3.5 text-clay" />
+          <ThermometerSun className="h-3 w-3 text-rose-600" />
           {trend ? `hottest recent day ${Math.round(trend.recent.tmaxMax)}°C` : ''}
         </span>
         <span className="flex items-center gap-1.5">
-          <Leaf className="h-3.5 w-3.5 text-leaf" />
+          <Leaf className="h-3 w-3 text-emerald-600" />
           {climate.heatMonths32} months of the year run hot (over 32°C)
         </span>
       </div>
