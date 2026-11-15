@@ -9,21 +9,14 @@ import { DiagnosticCard } from './ui'
 // The point of this card is to show that the shift is a long-term trend and
 // not one bad season, so it compares the first five years of the NASA daily
 // record with the most recent five.
-// ExtraUI theme: white card, emerald/amber/rose semantic accents.
 // ---------------------------------------------------------------------------
 
 type Metric = 'rain' | 'heat' | 'temp'
 
-const METRICS: Array<{
-  id: Metric
-  label: string
-  unit: string
-  colour: string
-  tone: 'emerald' | 'amber' | 'rose' | 'cyan'
-}> = [
-  { id: 'rain', label: 'Rainfall', unit: 'mm', colour: 'var(--color-status-cyan)', tone: 'cyan' },
-  { id: 'heat', label: 'Hot days', unit: 'days >32°C', colour: 'var(--color-verdict-shift)', tone: 'rose' },
-  { id: 'temp', label: 'Day highs', unit: '°C', colour: 'var(--color-verdict-adapt)', tone: 'amber' },
+const METRICS: Array<{ id: Metric; label: string; unit: string; colour: string }> = [
+  { id: 'rain', label: 'Rainfall', unit: 'mm', colour: 'var(--color-water)' },
+  { id: 'heat', label: 'Hot days', unit: 'days >32°C', colour: 'var(--color-clay)' },
+  { id: 'temp', label: 'Day highs', unit: '°C', colour: 'var(--color-ochre)' },
 ]
 
 function seriesFor(metric: Metric, trend: DailyTrend): number[] {
@@ -65,7 +58,7 @@ export default function TrendCard({ trend }: { trend: DailyTrend }) {
       step="4"
       title="How your farm has changed"
       sub="The first five years of the NASA record against the last five — proof that this is a shift, not one bad season."
-      icon={<History className="h-4 w-4 text-ink-3" />}
+      icon={<History className="h-5 w-5 text-ink-3" />}
     >
       {/* Metric switch */}
       <div className="mb-4 flex flex-wrap gap-1.5">
@@ -74,10 +67,10 @@ export default function TrendCard({ trend }: { trend: DailyTrend }) {
             key={m.id}
             onClick={() => setMetric(m.id)}
             aria-pressed={metric === m.id}
-            className={`rounded-full border px-3 py-1.5 text-[10px] font-bold transition-all ${
+            className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all ${
               metric === m.id
-                ? 'border-emerald-600 bg-emerald-600 text-white'
-                : 'border-slate-100 bg-white text-ink-2 hover:border-emerald-100 hover:bg-emerald-soft'
+                ? 'border-ink bg-ink text-paper'
+                : 'border-paper-3 bg-white/70 text-ink-2 hover:border-ink/30'
             }`}
           >
             {m.label}
@@ -87,22 +80,22 @@ export default function TrendCard({ trend }: { trend: DailyTrend }) {
 
       <div className="grid gap-5 lg:grid-cols-[1fr_260px] lg:items-start">
         {/* Mini chart */}
-        <div className="rounded-xl border border-slate-100 bg-white p-3 shadow-sm">
+        <div className="rounded-xl border border-paper-3 bg-paper/40 p-3">
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={`${meta.label} per year, ${years[0]} to ${years[years.length - 1]}`}>
             {/* baseline */}
-            <line x1={pad.l} y1={H - pad.b} x2={W - pad.r} y2={H - pad.b} stroke="var(--color-slate-100)" strokeWidth="1" />
+            <line x1={pad.l} y1={H - pad.b} x2={W - pad.r} y2={H - pad.b} stroke="var(--color-paper-3)" strokeWidth="1" />
             {/* split between "then" and "now" */}
-            <line x1={splitX} y1={pad.t - 4} x2={splitX} y2={H - pad.b} stroke="var(--color-ink-3)" strokeWidth="1" strokeDasharray="3 4" opacity="0.5" />
-            <text x={pad.l} y={H - 6} className="fill-ink-3 text-[9px]" fontFamily="var(--font-mono)">
+            <line x1={splitX} y1={pad.t - 4} x2={splitX} y2={H - pad.b} stroke="var(--color-ink-3)" strokeWidth="1" strokeDasharray="3 4" opacity="0.6" />
+            <text x={pad.l} y={H - 6} className="fill-ink-3 text-[10px]" fontFamily="var(--font-mono)">
               {years[0]}
             </text>
-            <text x={W - pad.r} y={H - 6} textAnchor="end" className="fill-ink-3 text-[9px]" fontFamily="var(--font-mono)">
+            <text x={W - pad.r} y={H - 6} textAnchor="end" className="fill-ink-3 text-[10px]" fontFamily="var(--font-mono)">
               {years[years.length - 1]}
             </text>
-            <text x={(pad.l + splitX) / 2} y={H - 6} textAnchor="middle" className="fill-ink-3 text-[9px]">
+            <text x={(pad.l + splitX) / 2} y={H - 6} textAnchor="middle" className="fill-ink-3 text-[10px]">
               then
             </text>
-            <text x={(splitX + W - pad.r) / 2} y={H - 6} textAnchor="middle" className="fill-ink-3 text-[9px]">
+            <text x={(splitX + W - pad.r) / 2} y={H - 6} textAnchor="middle" className="fill-ink-3 text-[10px]">
               now
             </text>
             {/* area + line */}
@@ -118,51 +111,51 @@ export default function TrendCard({ trend }: { trend: DailyTrend }) {
                 cx={x(i)}
                 cy={y(v)}
                 r={i >= values.length - 5 ? 3.2 : 2}
-                fill={i >= values.length - 5 ? meta.colour : 'var(--color-white)'}
+                fill={i >= values.length - 5 ? meta.colour : 'var(--color-paper)'}
                 stroke={meta.colour}
                 strokeWidth="1.4"
               />
             ))}
           </svg>
-          <p className="mt-1 text-[10px] text-ink-3">
+          <p className="mt-1 text-[11px] text-ink-3">
             {meta.label} per year at your exact point, from the NASA POWER daily record.
           </p>
         </div>
 
         {/* Then vs now numbers */}
         <div className="space-y-2.5">
-          <div className="rounded-xl border border-slate-100 bg-white p-3.5 shadow-sm">
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-ink-3">
+          <div className="rounded-xl border border-paper-3 bg-white/70 p-3.5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-3">
               {years[0]}–{years[Math.min(4, years.length - 1)]} (then)
             </p>
-            <p className="data-tabular mt-0.5 text-xl font-bold text-ink">
+            <p className="data-tabular mt-0.5 text-xl font-semibold text-ink">
               {metric === 'temp' ? `${thenValue.toFixed(1)} °C` : `${Math.round(thenValue)} ${meta.unit}`}
             </p>
           </div>
-          <div className="rounded-xl border border-slate-100 bg-white p-3.5 shadow-sm">
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-ink-3">
+          <div className="rounded-xl border border-paper-3 bg-white/70 p-3.5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-3">
               {years[Math.max(0, years.length - 5)]}–{years[years.length - 1]} (now)
             </p>
-            <p className="data-tabular mt-0.5 text-xl font-bold text-ink">
+            <p className="data-tabular mt-0.5 text-xl font-semibold text-ink">
               {metric === 'temp' ? `${nowValue.toFixed(1)} °C` : `${Math.round(nowValue)} ${meta.unit}`}
             </p>
           </div>
           <div
             className={`rounded-xl border px-3.5 py-3 ${
-              worse ? 'border-rose-100 bg-rose-soft' : 'border-emerald-100 bg-emerald-soft'
+              worse ? 'border-clay/40 bg-clay/10' : 'border-leaf/40 bg-leaf/10'
             }`}
           >
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-ink-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-3">
               The shift
             </p>
             <p
-              className={`data-tabular mt-0.5 text-xl font-bold ${
-                worse ? 'text-rose-700' : 'text-emerald-700'
+              className={`data-tabular mt-0.5 text-2xl font-semibold ${
+                worse ? 'text-clay' : 'text-leaf-dark'
               }`}
             >
               {deltaText}
             </p>
-            <p className="mt-1 text-[10px] leading-snug text-ink-2">
+            <p className="mt-1 text-[12px] leading-snug text-ink-2">
               {worse
                 ? metric === 'rain'
                   ? 'Less rain than the first five years of the record — this is the long-run pattern, not one dry season.'
@@ -177,7 +170,7 @@ export default function TrendCard({ trend }: { trend: DailyTrend }) {
         </div>
       </div>
 
-      <p className="mt-3 text-[10px] leading-snug text-ink-3">
+      <p className="mt-4 text-[11px] leading-snug text-ink-3">
         Source: NASA POWER daily point record for your coordinates (15 years, reanalysis). POWER daily
         data lags about a week, so the most recent season is still filling in.
       </p>

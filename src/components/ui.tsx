@@ -1,9 +1,7 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react'
 
 // ---------------------------------------------------------------------------
-// Shared UI primitives — Exact ExtraUI "Planetary Innovation Agency" theme:
-// Poppins typography, IBM Plex Mono data, emerald primary (#16A34A),
-// white cards with slate-100 hairline borders, slate-900 map/search darks.
+// Small shared UI primitives with a warm "field ledger" look.
 // ---------------------------------------------------------------------------
 
 export function Chip({
@@ -11,20 +9,19 @@ export function Chip({
   tone = 'neutral',
 }: {
   children: ReactNode
-  tone?: 'neutral' | 'emerald' | 'forest' | 'amber' | 'rose' | 'cyan' | 'slate'
+  tone?: 'neutral' | 'leaf' | 'ochre' | 'clay' | 'water' | 'dark'
 }) {
   const tones: Record<string, string> = {
-    neutral: 'bg-slate-100 text-ink-2 border border-slate-200',
-    emerald: 'bg-emerald-soft text-emerald-600 border border-emerald-200',
-    forest: 'bg-emerald/10 text-forest-emerald border border-emerald/20',
-    amber: 'bg-amber-soft text-amber-700 border border-amber-200',
-    rose: 'bg-rose-soft text-rose-600 border border-rose-200',
-    cyan: 'bg-cyan-soft text-cyan-600 border border-cyan-200',
-    slate: 'bg-slate-900 text-white border border-slate-800',
+    neutral: 'bg-paper-2 text-ink-2 border-paper-3',
+    leaf: 'bg-leaf/10 text-leaf-dark border-leaf/30',
+    ochre: 'bg-ochre/10 text-ochre border-ochre/40',
+    clay: 'bg-clay/10 text-clay border-clay/40',
+    water: 'bg-water/10 text-water border-water/30',
+    dark: 'bg-panel text-panel-text border-panel-line',
   }
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase ${tones[tone]}`}
+      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium tracking-wide ${tones[tone]}`}
     >
       {children}
     </span>
@@ -40,11 +37,11 @@ export function ScoreRing({ score, size = 64 }: { score: number; size?: number }
   const r = (size - 8) / 2
   const c = 2 * Math.PI * r
   const pct = Math.max(0, Math.min(100, shown)) / 100
-  const color = score >= 70 ? 'var(--color-verdict-keep)' : score >= 50 ? 'var(--color-verdict-adapt)' : 'var(--color-verdict-shift)'
+  const color = score >= 70 ? 'var(--color-leaf)' : score >= 50 ? 'var(--color-ochre)' : 'var(--color-clay)'
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--color-slate-100)" strokeWidth="5" />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--color-paper-3)" strokeWidth="5" />
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -59,7 +56,7 @@ export function ScoreRing({ score, size = 64 }: { score: number; size?: number }
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="data-tabular text-sm font-bold text-ink">{score}</span>
+        <span className="data-tabular text-sm font-semibold text-ink">{score}</span>
         <span className="text-[8px] uppercase tracking-widest text-ink-3">score</span>
       </div>
     </div>
@@ -81,18 +78,20 @@ export function ScoreBar({
     return () => clearTimeout(t)
   }, [score])
   const color =
-    score >= 70 ? 'var(--color-verdict-keep)' : score >= 50 ? 'var(--color-verdict-adapt)' : 'var(--color-verdict-shift)'
+    score >= 70 ? 'var(--color-leaf)' : score >= 50 ? 'var(--color-ochre)' : 'var(--color-clay)'
   return (
     <div className="group">
       <div className="mb-1 flex items-baseline justify-between gap-2">
         <span className="text-xs font-medium text-ink-2">{label}</span>
-        <span className="data-tabular text-xs font-bold text-ink">{score}</span>
+        <span className="data-tabular text-xs font-semibold" style={{ color }}>
+          {score}
+        </span>
       </div>
       <div className="scorebar h-2">
         <i style={{ width: `${w}%`, background: color }} />
       </div>
       {detail && (
-        <p className="mt-1 hidden text-[10px] leading-snug text-ink-3 group-hover:block group-focus-within:block">
+        <p className="mt-1 hidden text-[11px] leading-snug text-ink-3 group-hover:block group-focus-within:block">
           {detail}
         </p>
       )}
@@ -110,13 +109,15 @@ export function SectionHead({
   sub: string
 }) {
   return (
-    <div className="mb-6 flex items-start gap-4">
-      <span className="data-tabular mt-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-emerald-200 bg-white px-2 text-xs font-bold text-emerald-600">
+    <div className="mb-8 flex items-start gap-5">
+      <span className="data-tabular mt-1 hidden rounded-lg border border-paper-3 bg-paper-2 px-2.5 py-1 text-sm font-semibold text-ink-2 sm:block">
         {index}
       </span>
       <div>
-        <h2 className="font-display text-xl font-bold tracking-tight text-ink sm:text-2xl">{title}</h2>
-        <p className="mt-1 max-w-2xl text-sm leading-relaxed text-ink-2">{sub}</p>
+        <h2 className="font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+          {title}
+        </h2>
+        <p className="mt-1 max-w-2xl text-sm leading-relaxed text-ink-3">{sub}</p>
       </div>
     </div>
   )
@@ -137,13 +138,13 @@ export function Slider({
 }) {
   const slug = label.toLowerCase().replace(/[^a-z]+/g, '-')
   return (
-    <div className="space-y-2">
+    <div>
       <div className="flex items-center justify-between">
         <label htmlFor={`priority-${slug}`} className="flex items-center gap-2 text-sm font-medium text-ink-2">
           {icon}
           {label}
         </label>
-        <span className="data-tabular text-xs font-bold text-emerald-600">{value}</span>
+        <span className="data-tabular text-xs text-ink-3">{value}</span>
       </div>
       <input
         id={`priority-${slug}`}
@@ -155,22 +156,23 @@ export function Slider({
         className="w-full"
         aria-label={label}
       />
-      {hint && <p className="text-[10px] leading-snug text-ink-3">{hint}</p>}
+      {hint && <p className="text-[11px] text-ink-3">{hint}</p>}
     </div>
   )
 }
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`rounded-2xl border border-slate-100 bg-white shadow-card ${className}`}>
+    <div className={`rounded-2xl border border-paper-3 bg-white/60 shadow-card ${className}`}>
       {children}
     </div>
   )
 }
 
 /**
- * Shell for diagnostic cards: white surface, rounded-2xl, hairline border,
- * numbered step badge, title header.
+ * The shell for the four diagnostic cards that make up the result screen:
+ * verdict → live pulse → actions → trend. Each card is numbered and titled
+ * so the farmer always knows where they are in the diagnosis.
  */
 export function DiagnosticCard({
   step,
@@ -191,17 +193,17 @@ export function DiagnosticCard({
 }) {
   return (
     <section id={id} className={`scroll-mt-24 ${className}`}>
-      <div className="rise rounded-2xl border border-slate-100 bg-white p-5 shadow-card sm:p-6">
-        <header className="mb-5 flex items-start gap-3">
-          <span className="data-tabular mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-emerald-200 bg-emerald-soft text-xs font-bold text-emerald-600">
+      <div className="rise rounded-2xl border border-paper-3 bg-white/70 p-5 shadow-card sm:p-7">
+        <header className="mb-5 flex items-start gap-3.5">
+          <span className="data-tabular mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-panel text-xs font-bold text-leaf-3">
             {step}
           </span>
           <div className="min-w-0">
-            <h2 className="flex items-center gap-2 font-display text-base font-bold tracking-tight text-ink sm:text-lg">
+            <h2 className="flex items-center gap-2 font-display text-xl font-semibold tracking-tight text-ink sm:text-2xl">
               {icon}
               {title}
             </h2>
-            {sub && <p className="mt-1 max-w-2xl text-[12px] leading-relaxed text-ink-2">{sub}</p>}
+            {sub && <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-ink-3">{sub}</p>}
           </div>
         </header>
         {children}
@@ -210,7 +212,7 @@ export function DiagnosticCard({
   )
 }
 
-/** A clean labelled gauge used by the live-conditions card. */
+/** A simple labelled gauge used by the live-pulse card. */
 export function Gauge({
   label,
   state,
@@ -222,45 +224,38 @@ export function Gauge({
 }: {
   label: string
   state: string
-  tone: 'emerald' | 'amber' | 'rose' | 'cyan' | 'slate'
+  tone: 'leaf' | 'ochre' | 'clay' | 'water'
   value: string
   scale?: { pct: number; caption: string }
   tip: string
   source?: string
 }) {
-  const color =
-    tone === 'emerald'
-      ? 'var(--color-verdict-keep)'
-      : tone === 'amber'
-        ? 'var(--color-verdict-adapt)'
-        : tone === 'rose'
-          ? 'var(--color-verdict-shift)'
-          : tone === 'cyan'
-            ? 'var(--color-status-cyan)'
-            : 'var(--color-ink)'
+  const color = `var(--color-${tone})`
   return (
-    <div className="flex h-full flex-col rounded-xl border border-slate-100 bg-white p-4">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-3">{label}</p>
-      <p className="mt-1 font-display text-xl font-bold leading-tight {tone === 'emerald' ? 'text-emerald-600' : tone === 'amber' ? 'text-amber-700' : tone === 'rose' ? 'text-rose-600' : tone === 'cyan' ? 'text-cyan-600' : 'text-ink'}">{state}</p>
-      <p className="data-tabular mt-0.5 text-xs font-bold text-ink">{value}</p>
+    <div className="flex h-full flex-col rounded-xl border border-paper-3 bg-paper/40 p-4">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">{label}</p>
+      <p className="mt-1.5 font-display text-2xl font-semibold leading-tight" style={{ color }}>
+        {state}
+      </p>
+      <p className="data-tabular mt-0.5 text-sm font-semibold text-ink">{value}</p>
       {scale && (
         <div className="mt-3">
           <div className="scorebar h-2">
             <i style={{ width: `${Math.max(2, Math.min(100, scale.pct))}%`, background: color }} />
           </div>
-          <p className="mt-1 text-[9px] uppercase tracking-wider text-ink-3">{scale.caption}</p>
+          <p className="mt-1 text-[10px] uppercase tracking-wider text-ink-3">{scale.caption}</p>
         </div>
       )}
-      <p className="mt-3 flex-1 text-[11px] leading-snug text-ink-2">{tip}</p>
-      {source && <p className="mt-2 text-[9px] leading-tight text-ink-3">{source}</p>}
+      <p className="mt-3 flex-1 text-[12px] leading-snug text-ink-2">{tip}</p>
+      {source && <p className="mt-2 text-[10px] leading-tight text-ink-3">{source}</p>}
     </div>
   )
 }
 
 export const FAMILY_COLOR: Record<string, string> = {
-  grass: 'var(--color-verdict-keep)',
-  legume: 'var(--color-verdict-adapt)',
-  brassica: 'var(--color-verdict-shift)',
+  grass: 'var(--color-leaf)',
+  legume: 'var(--color-ochre)',
+  brassica: 'var(--color-clay)',
   other: 'var(--color-ink-3)',
 }
 
@@ -277,8 +272,8 @@ export function CropChip({
 }) {
   const color = FAMILY_COLOR[family] ?? 'var(--color-ink-3)'
   return (
-    <div className="flex min-w-[104px] flex-col items-center gap-1 rounded-xl border border-slate-100 bg-white px-2 py-1.5 text-center shadow-sm">
-      <span className="text-[11px] font-bold leading-tight text-ink">{name}</span>
+    <div className="flex min-w-[104px] flex-col items-center gap-1 rounded-xl border border-paper-3 bg-white/70 px-2 py-1.5 text-center">
+      <span className="text-[11px] font-semibold leading-tight text-ink">{name}</span>
       <div className="flex items-center gap-1">
         <i className="h-2 w-2 rounded-full" style={{ background: color }} />
         <span className="text-[9px] uppercase tracking-wider text-ink-3">
@@ -286,7 +281,7 @@ export function CropChip({
         </span>
       </div>
       {water !== undefined && water > 0 && (
-        <span className="data-tabular text-[9px] text-cyan-600">~{water}mm</span>
+        <span className="data-tabular text-[9px] text-water">~{water}mm</span>
       )}
     </div>
   )
