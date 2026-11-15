@@ -25,9 +25,41 @@ function barColor(score: number): string {
   return 'var(--color-clay)'
 }
 
+// Photographs shipped with the app (public/images). Crops without a photo
+// render a leaf tile instead — no broken-image states.
+const CROP_PHOTOS: Record<string, string> = {
+  maize: '/images/crop-maize.jpg',
+  sorghum: '/images/crop-sorghum.jpg',
+  wheat: '/images/crop-wheat.jpg',
+  sunflower: '/images/crop-sunflower.jpg',
+  sugarcane: '/images/crop-sugarcane.jpg',
+}
+
+function CropThumb({ id, name }: { id: string; name: string }) {
+  const src = CROP_PHOTOS[id]
+  if (!src) {
+    return (
+      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-paper-3 bg-leaf/10">
+        <Leaf className="h-5 w-5 text-leaf" />
+      </span>
+    )
+  }
+  return (
+    <img
+      src={src}
+      alt={name}
+      loading="lazy"
+      width={56}
+      height={56}
+      className="h-14 w-14 shrink-0 rounded-2xl border border-paper-3 object-cover shadow-sm"
+    />
+  )
+}
+
 function AltRow({ alt }: { alt: CropAlternative }) {
   return (
     <li className="flex items-center gap-3.5 rounded-xl border border-paper-3 bg-white/70 px-3.5 py-3">
+      <CropThumb id={alt.crop.id} name={alt.crop.name} />
       <div className="min-w-0 flex-1">
         <p className="flex items-baseline gap-2">
           <span className="text-sm font-semibold text-ink">{alt.crop.name}</span>
