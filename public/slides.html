@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FieldShift — NASA Space Apps 2026 · Presentation</title>
+    <meta
+      name="description"
+      content="Six-slide presentation for FieldShift — Planetary Innovation Agency. NASA Earth observations turned into Keep / Adapt / Shift decisions for South African farmers."
+    />
+    <meta name="theme-color" content="#16a34a" />
+    <link rel="icon" type="image/svg+xml" href="/fieldshift.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Poppins:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/slides/slides.css" />
+  </head>
+  <body>
+    <!-- ============ OPENING / OVERVIEW ============ -->
+    <section class="slide cover" id="slide-1">
+      <div class="cover-glow"></div>
+      <div class="cover-grid">
+        <div class="cover-copy">
+          <span class="chip chip-light">NASA Space Apps Challenge 2026</span>
+          <span class="chip chip-light">Field Shift · Adapting Farms with NASA Data</span>
+          <span class="chip chip-light">South Africa 🇿🇦</span>
+
+          <h1 class="cover-title">
+            FieldShift
+            <span class="cover-sub">Planetary Innovation Agency</span>
+          </h1>
+
+          <p class="cover-lede">
+            Thirty years of NASA Earth observations, turned into one plain-English
+            answer for one exact field: <strong>keep</strong> your crop,
+            <strong>adapt</strong> the plan, or <strong>shift</strong> the rotation —
+            and exactly when to act.
+          </p>
+
+          <div class="cover-stats">
+            <div class="stat">
+              <span class="stat-num">20</span>
+              <span class="stat-label">SA rotation crops</span>
+            </div>
+            <div class="stat">
+              <span class="stat-num">5</span>
+              <span class="stat-label">demo regions</span>
+            </div>
+            <div class="stat">
+              <span class="stat-num">30+</span>
+              <span class="stat-label">yrs NASA POWER</span>
+            </div>
+            <div class="stat">
+              <span class="stat-num">4</span>
+              <span class="stat-label">live NASA layers</span>
+            </div>
+          </div>
+
+          <div class="cover-actions">
+            <a class="btn btn-primary" href="#slide-2">Start the deck →</a>
+            <a class="btn btn-ghost" href="/">Open the live app →</a>
+          </div>
+        </div>
+
+        <div class="cover-visual">
+          <div class="orbit-card">
+            <div class="orbit-ring orbit-ring-1"></div>
+            <div class="orbit-ring orbit-ring-2"></div>
+            <div class="orbit-core">
+              <span class="orbit-score">72</span>
+              <span class="orbit-tag">crop suitability</span>
+            </div>
+            <div class="orbit-badge orbit-badge-keep">KEEP</div>
+            <div class="orbit-badge orbit-badge-adapt">ADAPT</div>
+            <div class="orbit-badge orbit-badge-shift">SHIFT</div>
+          </div>
+        </div>
+      </div>
+
+      <p class="slide-foot">FieldShift supports — never replaces — farmer judgement.</p>
+    </section>
+
+    <!-- ============ THE PROBLEM ============ -->
+    <section class="slide" id="slide-2">
+      <header class="slide-head">
+        <span class="chip">01 · The problem</span>
+        <h2>South African farms are being re-written by the climate</h2>
+        <p class="lead">
+          Rainfall is shifting. Heat spells stretch. The water bank under a farmer's
+          feet matters more every year — and the tools to see it are sitting in orbit,
+          unused.
+        </p>
+      </header>
+
+      <div class="grid-3">
+        <article class="card card-risk">
+          <span class="card-kicker">Water</span>
+          <h3>The rains are moving</h3>
+          <p>
+            The first five years of NASA's daily record and the last five no longer
+            agree. At some points the wet season arrives days earlier or later than
+            the habit a farmer plants to.
+          </p>
+        </article>
+        <article class="card card-risk">
+          <span class="card-kicker">Heat</span>
+          <h3>Heat arrives in spells</h3>
+          <p>
+            Hot days above 32&nbsp;°C are no longer a season, they are a plan.
+            Flowering crops face real risk, and every extra degree raises the
+            water demand of the crop standing in the field.
+          </p>
+        </article>
+        <article class="card card-risk">
+          <span class="card-kicker">Access</span>
+          <h3>The data is open — the answers are not</h3>
+          <p>
+            NASA POWER, GIBS and Copernicus DEM are free and keyless. What is missing
+            is a tool that turns them into a decision a farmer can act on this week.
+          </p>
+        </article>
+      </div>
+
+      <div class="callout">
+        <span class="callout-mark">→</span>
+        <p>
+          <strong>The gap we close:</strong> not another dashboard of numbers, but a
+          health check for the land — a verdict, a gauge reading, a next step, and a
+          date.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ THE APP ============ -->
+    <section class="slide" id="slide-3">
+      <header class="slide-head">
+        <span class="chip">02 · The app</span>
+        <h2>One map, two layers of truth</h2>
+        <p class="lead">
+          The Planetary console is the front door: a full-bleed satellite map with
+          live NASA layers, a global place search and real farmland around you. The
+          FieldShift engine drops in as an add-on tab for the deeper diagnosis.
+        </p>
+      </header>
+
+      <div class="split">
+        <div class="split-panel">
+          <h3><span class="num">A</span> Planetary console</h3>
+          <ul class="ticks">
+            <li>Earth · Mars · Moon modes on NASA Trek mosaics</li>
+            <li>4 NASA GIBS layers: true colour, NDVI, land-surface heat, GFSAD cropland</li>
+            <li>Global place search, benchmark farms, 15 km OpenStreetMap farmland scan</li>
+            <li>Live NASA POWER telemetry against each crop's ideal range</li>
+            <li>3D globe with vertical-farming mask (&lt; 5° slope)</li>
+            <li>Export a copyable, shareable farm report</li>
+          </ul>
+        </div>
+        <div class="split-panel split-panel-accent">
+          <h3><span class="num">B</span> FieldShift engine (add-on)</h3>
+          <ul class="ticks">
+            <li>30-yr POWER climatology + 15-yr daily archive at your exact point</li>
+            <li>Verdict: KEEP / ADAPT / SHIFT, with its top drivers</li>
+            <li>Live pulse: soil moisture, MODIS NDVI vs prior years, 14-day outlook</li>
+            <li>Top-3 alternative crops, a 2-season plan, a "when to act" window</li>
+            <li>Then-vs-now trend: first 5 years against the last 5</li>
+            <li>Rotation strategies, season playbook, field-shift explorer</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="ribbon">
+        <span>Both halves share one map, one coordinate state and one theme.</span>
+      </div>
+    </section>
+
+    <!-- ============ THE DATA ============ -->
+    <section class="slide" id="slide-4">
+      <header class="slide-head">
+        <span class="chip">03 · The data</span>
+        <h2>Everything is live, keyless and open</h2>
+        <p class="lead">
+          No mock-ups, no seeded numbers. Every figure on screen was fetched from a
+          NASA endpoint in your browser, in the last few seconds.
+        </p>
+      </header>
+
+      <div class="grid-2">
+        <article class="card card-data">
+          <span class="card-kicker">NASA POWER</span>
+          <h3>Agroclimatology, daily + climatology</h3>
+          <p>
+            Rainfall, humidity, root-zone soil wetness and evapotranspiration at the
+            field's own coordinates. Monthly temperature normals, hot-day and
+            frost-night frequencies are derived from the 15-year daily record,
+            because POWER's climatology returns 30-year record
+            <em>extremes</em> rather than means.
+          </p>
+        </article>
+        <article class="card card-data">
+          <span class="card-kicker">NASA GIBS</span>
+          <h3>MODIS Terra &amp; GFSAD</h3>
+          <p>
+            True colour, NDVI at 250 m, land-surface temperature, and cropland
+            extent — rendered live on the map. The in-app NDVI reading is sampled
+            pixel-by-pixel from the tiles and inverted back to a real index with a
+            colour-ramp lookup generated from the GIBS colormaps.
+          </p>
+        </article>
+        <article class="card card-data">
+          <span class="card-kicker">Copernicus DEM</span>
+          <h3>Terrain → erosion risk</h3>
+          <p>
+            Elevation around the field centre is sampled through Open-Meteo and
+            reduced to a steepest local gradient, giving slope class and an
+            erosion-risk weighting for the score.
+          </p>
+        </article>
+        <article class="card card-data">
+          <span class="card-kicker">NASA Trek + Open data</span>
+          <h3>Off-world mosaics &amp; the neighbourhood</h3>
+          <p>
+            Viking MDIM and LRO WAC global mosaics drive the Mars and Moon globes.
+            OpenStreetMap supplies the real neighbouring farms; BigDataCloud and
+            Nominatim name the field and search for it.
+          </p>
+        </article>
+      </div>
+
+      <p class="footnote">
+        The 14-day heat &amp; rainfall outlook is a genuine ECMWF/GFS forecast via
+        Open-Meteo, benchmarked against NASA POWER normals and labelled as a forecast
+        — not passed off as NASA data.
+      </p>
+    </section>
+
+    <!-- ============ THE PROOF ============ -->
+    <section class="slide" id="slide-5">
+      <header class="slide-head">
+        <span class="chip">04 · The proof</span>
+        <h2>It is a shift, not one bad season</h2>
+        <p class="lead">
+          The verdict rests on a comparison of the first five years of the NASA
+          record against the most recent five. That is the difference between a
+          weather event and a permanent change in the ground.
+        </p>
+      </header>
+
+      <div class="proof-grid">
+        <article class="proof">
+          <span class="proof-num">+41%</span>
+          <span class="proof-label">rainfall shift, then → now</span>
+          <p>
+            Measured from the daily POWER archive at the field's own coordinates,
+            with incomplete first-year records excluded so the comparison stays honest.
+          </p>
+        </article>
+        <article class="proof">
+          <span class="proof-num">10 days</span>
+          <span class="proof-label">wet-season onset moved</span>
+          <p>
+            First useful rains now arrive roughly ten days earlier than they used
+            to. The app tells the farmer to move their planting date by the same
+            amount — rather than by habit.
+          </p>
+        </article>
+        <article class="proof">
+          <span class="proof-num">+1.5%</span>
+          <span class="proof-label">root-zone wetness in season</span>
+          <p>
+            The soil's water bank is running fuller at the wrong time of year —
+            which is exactly the signal a farmer needs before the season, not after.
+          </p>
+        </article>
+      </div>
+
+      <div class="callout callout-emerald">
+        <span class="callout-mark">✓</span>
+        <p>
+          <strong>Why this matters for judging:</strong> the score is rule-based and
+          explainable by design. Every criterion — water fit, soil health, erosion,
+          pest break, climate fit, income, forage — is a transparent calculation
+          from the data, quoted back to the farmer in plain language.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ THE CLOSE ============ -->
+    <section class="slide slide-close" id="slide-6">
+      <div class="close-glow"></div>
+      <div class="close-copy">
+        <span class="chip chip-light">05 · Where it goes</span>
+        <h2>Built to be used, not admired</h2>
+        <p class="lead">
+          A farmer opens the console on a phone in the field, drops a pin, reads the
+          verdict, and knows what to plant and when. Everything supports their
+          judgement; it never replaces it.
+        </p>
+
+        <div class="close-points">
+          <div class="close-point">
+            <h3>Immediate</h3>
+            <p>
+              Live app, a plain-language farm report to paste into WhatsApp, and a
+              decision the farmer can act on this week.
+            </p>
+          </div>
+          <div class="close-point">
+            <h3>Next</h3>
+            <p>
+              SMAP L4 &amp; ECOSTRESS behind Earthdata auth, Sentinel-2 crop-history
+              mapping for SA, a stronger optimiser over the crop library, and saved
+              farmer fields.
+            </p>
+          </div>
+          <div class="close-point">
+            <h3>Honest limits</h3>
+            <p>
+              The 30-yr record is coarse; POWER daily lags about a week; regional
+              shift scoring is a first-pass climate screen. Land, water rights and
+              markets stay with the farmer.
+            </p>
+          </div>
+        </div>
+
+        <div class="cover-actions">
+          <a class="btn btn-primary" href="/">Open the live app →</a>
+          <a class="btn btn-ghost" href="#slide-1">Back to the top ↑</a>
+        </div>
+
+        <p class="close-foot">
+          Built with 💚 for the NASA International Space Apps Challenge 2026 ·
+          challenge: <em>Field Shift — Adapting Farms with NASA Data</em> · South Africa team.
+        </p>
+      </div>
+    </section>
+
+    <nav class="dots" aria-label="Slide navigation">
+      <a href="#slide-1" aria-label="Slide 1"></a>
+      <a href="#slide-2" aria-label="Slide 2"></a>
+      <a href="#slide-3" aria-label="Slide 3"></a>
+      <a href="#slide-4" aria-label="Slide 4"></a>
+      <a href="#slide-5" aria-label="Slide 5"></a>
+      <a href="#slide-6" aria-label="Slide 6"></a>
+    </nav>
+
+    <script src="/slides/slides.js"></script>
+  </body>
+</html>

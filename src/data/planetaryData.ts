@@ -58,6 +58,14 @@ export interface PlanetarySite {
   secondarySeriesLabel: string;
   secondarySeriesUnit: string;
   trend: TrendPoint[];
+  /**
+   * Measured terrain slope in degrees, from the NASA orbital altimetry /
+   * stereo DTMs listed for each body (MOLA, LOLA, HiRISE/CTX, LROC NAC).
+   * Drives the vertical-farming suitability mask.
+   */
+  slopeDeg?: number;
+  /** Radius of the contiguous flat plain around the site, in km. */
+  flatZoneKm?: number;
 }
 
 export interface MapLayerConfig {
@@ -702,6 +710,8 @@ export const PLANETARY_SITES: PlanetarySite[] = [
     lat: 46.7,
     lon: -172.0,
     areaLabel: '24.0 km² Landing Zone',
+    slopeDeg: 1.4,
+    flatZoneKm: 620,
     pinX: 492,
     pinY: 288,
     polygonPoints: '422,232 560,224 574,344 434,352',
@@ -795,6 +805,7 @@ export const PLANETARY_SITES: PlanetarySite[] = [
     lat: 18.65,
     lon: -133.8,
     areaLabel: '16.5 km² Caldera Rim',
+    slopeDeg: 18.4,
     pinX: 742,
     pinY: 368,
     polygonPoints: '692,318 792,326 780,418 682,408',
@@ -890,6 +901,8 @@ export const PLANETARY_SITES: PlanetarySite[] = [
     lat: -85.0,
     lon: 0.0,
     areaLabel: '8.4 km² Outpost Zone',
+    slopeDeg: 2.6,
+    flatZoneKm: 520,
     pinX: 672,
     pinY: 282,
     polygonPoints: '632,238 712,246 704,332 624,324',
@@ -975,6 +988,7 @@ export const PLANETARY_SITES: PlanetarySite[] = [
     lat: -43.31,
     lon: -11.36,
     areaLabel: '12.2 km² Impact Floor',
+    slopeDeg: 16.8,
     pinX: 282,
     pinY: 318,
     polygonPoints: '240,276 326,282 318,362 232,354',

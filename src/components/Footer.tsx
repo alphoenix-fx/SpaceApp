@@ -1,4 +1,4 @@
-import { BookOpen, Database, Satellite } from 'lucide-react'
+import { BookOpen, Database, Presentation, Satellite } from 'lucide-react'
 import { Chip } from './ui'
 
 const GLOSSARY: Array<[string, string]> = [
@@ -114,7 +114,15 @@ export default function Footer() {
             Built for the <strong>NASA International Space Apps Challenge 2026</strong> — challenge:{' '}
             <em>Field Shift: Adapting Farms with NASA Data</em>. South Africa team.
           </p>
-          <Chip tone="dark">Powered by NASA open data</Chip>
+          <div className="flex items-center gap-2">
+            <a
+              href="/slides/"
+              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-soft px-3 py-1 text-[10px] font-bold text-emerald-700 transition hover:bg-emerald-100"
+            >
+              <Presentation className="h-3 w-3" /> Presentation slides
+            </a>
+            <Chip tone="dark">Powered by NASA open data</Chip>
+          </div>
         </div>
       </div>
     </footer>

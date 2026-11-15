@@ -52,7 +52,8 @@ should I plant and when?"*
 | Challenge asks for | FieldShift delivers |
 | --- | --- |
 | NASA Earth observations | NASA **POWER** agroclimatology (30+ yr normals + a 15-yr daily archive) for the exact field point; **MODIS Terra** (GIBS) true-colour, **NDVI 8-day 250 m**, **NDVI 16-day 2000–present**, **Land Surface Temperature** and **GFSAD cropland extent** layers; **Copernicus DEM** (via Open-Meteo) elevation → slope → erosion risk; **NASA Trek** orbital mosaics for the Mars and Moon modes |
-| Pin the farm, pick crops | Full-bleed interactive satellite map, draggable pin, global place search, sample global benchmark farms, a 15 km **OpenStreetMap farmland scan**, then one of 5 SA demo regions — or your own spot — and the rotation you actually grow |
+| Pin the farm, pick crops | Full-bleed interactive satellite map, draggable pin, global place search, sample global benchmark farms, a 15 km **OpenStreetMap farmland scan**, an **adjustable analysis catchment** (0.5–50 km, default 2.5 km), then one of 5 SA demo regions — or your own spot — and the rotation you actually grow |
+| Planetary exploration | Real **3D globes** for Mars and Moon, rendered pixel-by-pixel from the NASA Trek Viking MDIM and LRO WAC global mosaics, with a **vertical-farming suitability mask** that highlights ground under 5° slope (HiRISE/CTX DTMs + MOLA for Mars, LOLA + LROC NAC for the Moon) |
 | Past-vs-present trends | **Then vs now**: first 5 vs latest 5 years of the 15-yr NASA record — rainfall %, growing-season root-zone wetness, days above 32 °C, mean day-high, plus a full 15-year chart and wet-season onset shift |
 | Traffic-light Crop Viability Score | A single **Keep / Adapt / Shift** verdict (green/amber/red) for the dominant crop, blending water balance, climate fit, soil/erosion and **trend momentum** — one sentence of plain English + its top drivers |
 | Field Shifting Recommendations | Green/amber/red **rotation strategies** with why/evidence/benefits/gaps/risks; the Actions card ranks the top-3 **alternative crops** for this field with match %, a suggested 2-season rotation and a *when to act* window — plus a **Field-Shift Explorer** scoring the same crop vs other SA regions |
@@ -118,6 +119,12 @@ npm run build      # production bundle in dist/
 ```
 
 No API keys required — all data endpoints are open and CORS-enabled.
+
+## Presentation slides
+
+A six-slide deck for presenting the project lives at **`/slides.html`** (also
+reachable at `/slides/`). It is a plain static page in `public/slides/` — no
+login, no permissions, no build step of its own.
 
 ## Deploy
 

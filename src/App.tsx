@@ -51,6 +51,12 @@ export default function App() {
     layer_c: false,
   });
 
+  /** Analysis footprint around the pinned field — user adjustable (0.5–50 km). */
+  const [catchmentRadius, setCatchmentRadius] = useState(2500);
+
+  /** Vertical-farming suitability mask (Mars / Moon). */
+  const [verticalFarming, setVerticalFarming] = useState(false);
+
   const [customCoordinate, setCustomCoordinate] = useState<{
     lat: number;
     lon: number;
@@ -246,6 +252,7 @@ export default function App() {
 
   const handleModeChange = (nextMode: PlanetaryMode) => {
     setMode(nextMode);
+    setVerticalFarming(false);
     if (nextMode === 'earth') {
       setCustomCoordinate({ lat: -33.85, lon: 18.92 });
     } else if (nextMode === 'mars') {
@@ -364,11 +371,15 @@ export default function App() {
     }));
   };
 
+  // Only one telemetry footprint layer at a time — stacking them turns the map
+  // into a wall of overlapping catchments.
   const handleToggleLayer = (layerId: MapLayerId) => {
-    setActiveLayers((prev) => ({
-      ...prev,
-      [layerId]: !prev[layerId],
-    }));
+    setActiveLayers((prev) => {
+      const isOn = prev[layerId]
+      const next: Record<MapLayerId, boolean> = { layer_a: false, layer_b: false, layer_c: false }
+      next[layerId] = !isOn
+      return next
+    })
   };
 
   return (
@@ -399,6 +410,10 @@ export default function App() {
           onSelectBenchmarkFarm={handleSelectBenchmarkFarm}
           onSelectLocalFarmPin={handleSelectLocalFarmPin}
           isLoadingTelemetry={isLoadingTelemetry}
+          catchmentRadiusMeters={catchmentRadius}
+          onCatchmentRadiusChange={setCatchmentRadius}
+          verticalFarming={verticalFarming}
+          onToggleVerticalFarming={() => setVerticalFarming((v) => !v)}
         />
 
         {/* Right column: the live console, with the FieldShift engine as an add-on tab */}

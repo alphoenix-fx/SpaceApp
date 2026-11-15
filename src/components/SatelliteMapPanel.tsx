@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import L from 'leaflet';
 import {
   Layers,
@@ -8,9 +8,6 @@ import {
   Droplets,
   Leaf,
   CloudRain,
-  Snowflake,
-  Mountain,
-  Sun,
   Crosshair,
   Satellite,
   ChevronDown,
@@ -19,8 +16,14 @@ import {
   Radar,
   Loader2,
   X,
+  MoveHorizontal,
+  Sprout as PlantIcon,
+  FlaskConical,
 } from 'lucide-react';
-import { BENCHMARK_FARMS, PLANET_ASSETS } from '../data/planetaryData';
+import {
+  BENCHMARK_FARMS,
+  PLANET_ASSETS,
+} from '../data/planetaryData';
 import type {
   BenchmarkFarm,
   MapLayerId,
@@ -29,6 +32,8 @@ import type {
 } from '../data/planetaryData';
 import { scanLocalFarmsOverpass } from '../services/overpassFarms';
 import type { OverpassFarmPin } from '../services/overpassFarms';
+import PlanetGlobe from './PlanetGlobe';
+import InfoPopup from './InfoPopup';
 
 interface SatelliteMapPanelProps {
   mode: PlanetaryMode;
@@ -49,31 +54,31 @@ interface SatelliteMapPanelProps {
   onSelectBenchmarkFarm?: (farm: BenchmarkFarm) => void;
   onSelectLocalFarmPin?: (farm: OverpassFarmPin) => void;
   isLoadingTelemetry?: boolean;
+  /** analysis footprint radius in metres (Earth) */
+  catchmentRadiusMeters: number;
+  onCatchmentRadiusChange: (meters: number) => void;
+  /** vertical-farming suitability mask (Mars / Moon) */
+  verticalFarming: boolean;
+  onToggleVerticalFarming: () => void;
+  /** called when a site marker is picked on the 3D globe */
+  onGlobeSitePick?: (site: PlanetarySite) => void;
 }
 
-const PLANET_TREK_TILES: Record<
-  'mars' | 'moon',
-  {
-    url: string;
-    attribution: string;
-    initialCenter: [number, number];
-    initialZoom: number;
-    targetZoom: number;
-  }
-> = {
+/** The methodology note shown when a new planet mode is opened. */
+const METHODOLOGY: Record<'mars' | 'moon', { title: string; body: string; footnote: string }> = {
   mars: {
-    url: 'https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg',
-    attribution: 'NASA Mars Trek · Viking MDIM 2.1',
-    initialCenter: [25, -150],
-    initialZoom: 1,
-    targetZoom: 3,
+    title: 'How we found these sites',
+    body:
+      'We have used the Food and Agriculture Organization (FAO) EcoCrop dataset to define the ideal growing conditions for over 2,500 plant species, creating a biological lookup table. We pair this with NASA’s Subsurface Water Ice Mapping (SWIM), Mars Orbiter Laser Altimeter (MOLA), Mars Climate Sounder (MCS), and HiRISE datasets to find resource-rich, safe locations for greenhouses and recommend which crops to grow on Mars.',
+    footnote:
+      'EcoCrop · SWIM · MOLA · MCS · HiRISE — all NASA / FAO open data.',
   },
   moon: {
-    url: 'https://trek.nasa.gov/tiles/Moon/EQ/LRO_WAC_Mosaic_Global_303ppd/1.0.0/default/default028mm/{z}/{y}/{x}.jpg',
-    attribution: 'NASA Moon Trek · LRO WAC Mosaic',
-    initialCenter: [-58, -5],
-    initialZoom: 1,
-    targetZoom: 3,
+    title: 'How we found these sites',
+    body:
+      'We have used the Food and Agriculture Organization (FAO) EcoCrop dataset to define the ideal growing conditions for over 2,500 plant species, creating a biological lookup table. We pair this with NASA’s Subsurface Water Ice Mapping (SWIM), Mars Orbiter Laser Altimeter (MOLA), Mars Climate Sounder (MCS), and HiRISE datasets to find resource-rich, safe locations for greenhouses and recommend which crops to grow on the moon.',
+    footnote:
+      'EcoCrop · SWIM · MOLA · MCS · HiRISE — all NASA / FAO open data.',
   },
 };
 
@@ -91,8 +96,14 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
   onSelectBenchmarkFarm,
   onSelectLocalFarmPin,
   isLoadingTelemetry = false,
+  catchmentRadiusMeters,
+  onCatchmentRadiusChange,
+  verticalFarming,
+  onToggleVerticalFarming,
+  onGlobeSitePick,
 }) => {
   const asset = PLANET_ASSETS[mode];
+  const isOffWorld = mode !== 'earth';
 
   const leafletContainerRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
@@ -109,7 +120,10 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
   const [showCroplandOverlay, setShowCroplandOverlay] = useState(false);
   const [isSatelliteMenuOpen, setIsSatelliteMenuOpen] = useState(false);
   const [isBenchmarkMenuOpen, setIsBenchmarkMenuOpen] = useState(false);
+  const [isCatchmentOpen, setIsCatchmentOpen] = useState(false);
   const [activeBenchmarkId, setActiveBenchmarkId] = useState<string | null>(null);
+  const [methodologyOpen, setMethodologyOpen] = useState(false);
+  const [greenhouseSite, setGreenhouseSite] = useState<PlanetarySite | null>(null);
 
   // Overpass local farm scanner state
   const [scannedFarms, setScannedFarms] = useState<OverpassFarmPin[]>([]);
@@ -131,11 +145,18 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
   const onSelectLocalFarmRef = useRef(onSelectLocalFarmPin);
   onSelectLocalFarmRef.current = onSelectLocalFarmPin;
 
-  const [cursorCoords, setCursorCoords] = useState<{ lat: number; lon: number } | null>(
-    null
-  );
+  const [cursorCoords, setCursorCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [zoomLevel, setZoomLevel] = useState(mode === 'earth' ? 9 : 3);
   const skipInitialEarthPanRef = useRef(true);
+
+  // Show the methodology note the first time an off-world mode opens
+  useEffect(() => {
+    if (mode === 'earth') {
+      setMethodologyOpen(false);
+      return;
+    }
+    setMethodologyOpen(true);
+  }, [mode]);
 
   useEffect(() => {
     const handleOutside = (e: MouseEvent) => {
@@ -170,76 +191,41 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
     return mode === 'mars' ? '#38BDF8' : '#16A34A';
   };
 
-  // Initialize interactive Leaflet map dynamically for Earth, Mars, or Moon
+  // Initialize interactive Leaflet map dynamically for Earth
   useEffect(() => {
     if (!leafletContainerRef.current) return;
 
-    const isEarth = mode === 'earth';
-    const trekConfig = !isEarth ? PLANET_TREK_TILES[mode] : null;
-    skipInitialEarthPanRef.current = isEarth && !customCoordinate?.zoomTo;
-
-    const initialCenter: [number, number] = isEarth
-      ? customCoordinate?.zoomTo
-        ? [customCoordinate.lat, customCoordinate.lon]
-        : [-33.92, 18.86]
-      : trekConfig!.initialCenter;
-    const initialZoom = isEarth
-      ? customCoordinate?.zoomTo ?? 9
-      : trekConfig!.initialZoom;
-
     const map = L.map(leafletContainerRef.current, {
-      crs: isEarth ? L.CRS.EPSG3857 : L.CRS.EPSG4326,
-      center: initialCenter,
-      zoom: initialZoom,
+      crs: L.CRS.EPSG3857,
+      center: [-33.92, 18.86],
+      zoom: 9,
       zoomControl: false,
-      minZoom: isEarth ? 3 : 1,
-      maxZoom: isEarth ? 18 : 7,
-      maxBounds: isEarth
-        ? undefined
-        : [
-            [-105, -200],
-            [105, 200],
-          ],
-      maxBoundsViscosity: isEarth ? 0 : 0.4,
+      minZoom: 3,
+      maxZoom: 18,
     });
 
-    if (isEarth) {
-      L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        {
-          maxZoom: 18,
-          attribution: 'Tiles &copy; Esri World Imagery',
-        }
-      ).addTo(map);
+    L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      {
+        maxZoom: 18,
+        attribution: 'Tiles &copy; Esri World Imagery',
+      }
+    ).addTo(map);
 
-      // Semi-transparent reference labels layer above satellite & GIBS overlays
-      const labelsPane = map.createPane('labelsPane');
-      labelsPane.style.zIndex = '450';
-      labelsPane.style.pointerEvents = 'none';
+    // Semi-transparent reference labels layer above satellite & GIBS overlays
+    const labelsPane = map.createPane('labelsPane');
+    labelsPane.style.zIndex = '450';
+    labelsPane.style.pointerEvents = 'none';
 
-      L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-        {
-          pane: 'labelsPane',
-          opacity: 0.85,
-          maxZoom: 18,
-          attribution: 'Labels &copy; Esri',
-        }
-      ).addTo(map);
-    } else if (trekConfig) {
-      L.tileLayer(trekConfig.url, {
-        tms: false,
-        minZoom: 1,
-        maxZoom: 7,
-        maxNativeZoom: 7,
-        noWrap: true,
-        bounds: [
-          [-90, -180],
-          [90, 180],
-        ],
-        attribution: trekConfig.attribution,
-      }).addTo(map);
-    }
+    L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+      {
+        pane: 'labelsPane',
+        opacity: 0.85,
+        maxZoom: 18,
+        attribution: 'Labels &copy; Esri',
+      }
+    ).addTo(map);
 
     const telemetryGroup = L.layerGroup().addTo(map);
     const siteGroup = L.layerGroup().addTo(map);
@@ -265,14 +251,12 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
     });
 
     map.on('click', (e: L.LeafletMouseEvent) => {
-      if (mode === 'earth' && onMapClickRef.current) {
-        setSelectedLocalFarmId(null);
-        setActiveBenchmarkId(null);
-        onMapClickRef.current(
-          +e.latlng.lat.toFixed(4),
-          +e.latlng.lng.toFixed(4)
-        );
-      }
+      setSelectedLocalFarmId(null);
+      setActiveBenchmarkId(null);
+      onMapClickRef.current?.(
+        +e.latlng.lat.toFixed(4),
+        +e.latlng.lng.toFixed(4)
+      );
     });
 
     const resizeObserver = new ResizeObserver(() => {
@@ -298,11 +282,11 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
       customPinGroupRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
+  }, []);
 
-  // Sync NASA GIBS Global Cropland Extent (GFSAD) overlay TileLayer in Earth mode
+  // Sync NASA GIBS Global Cropland Extent (GFSAD) overlay TileLayer
   useEffect(() => {
-    if (mode !== 'earth' || !leafletMapRef.current) return;
+    if (!leafletMapRef.current) return;
     const map = leafletMapRef.current;
 
     if (croplandLayerRef.current) {
@@ -326,9 +310,9 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
     }
   }, [mode, showCroplandOverlay]);
 
-  // Sync NASA GIBS MODIS True Color / NDVI overlay TileLayer in Earth mode
+  // Sync NASA GIBS MODIS True Color / NDVI overlay TileLayer
   useEffect(() => {
-    if (mode !== 'earth' || !leafletMapRef.current) return;
+    if (!leafletMapRef.current) return;
     const map = leafletMapRef.current;
 
     if (gibsLayerRef.current) {
@@ -366,16 +350,15 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
     }
   }, [mode, earthSatelliteOverlay]);
 
-  // Sync site boundary polygons & clickable location pins for Earth, Mars, and Moon
+  // Sync site boundary polygons & clickable location pins (Earth)
   useEffect(() => {
     const siteGroup = siteOverlayGroupRef.current;
     if (!siteGroup) return;
 
     siteGroup.clearLayers();
 
-    const isEarth = mode === 'earth';
-    const dLat = isEarth ? 0.011 : 2.1;
-    const dLon = isEarth ? 0.015 : 3.2;
+    const dLat = 0.011;
+    const dLon = 0.015;
 
     sites.forEach((site) => {
       const isSelected = !customCoordinate && site.id === selectedSite.id;
@@ -414,14 +397,12 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
           : activeProfile.verdictTone === 'amber'
             ? 'Caution'
             : 'Optimal';
-      const subtitleText = isEarth
-        ? site.coordinates
-        : `${activeProfile.suitabilityIndex}% ${toneWord} · ${site.coordinates}`;
+      const subtitleText = `${activeProfile.suitabilityIndex}% ${toneWord} · ${site.coordinates}`;
       const escapedSubtitle = subtitleText
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
 
-      const showSubtitle = isSelected || !isEarth;
+      const showSubtitle = isSelected;
       const iconHtml = `
         <div style="display:flex;align-items:center;gap:8px;transform:translate(-10px,-10px);pointer-events:auto;cursor:pointer;">
           <div style="width:20px;height:20px;border-radius:9999px;background:#0F172A;border:3px solid ${color};display:flex;align-items:center;justify-content:center;box-shadow:${
@@ -437,13 +418,7 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
             };color:#0F172A;line-height:1.25;">${escapedName}</div>
             ${
               showSubtitle
-                ? `<div style="font-size:9.5px;font-family:'IBM Plex Mono',monospace;color:${
-                    !isEarth && activeProfile.verdictTone === 'coral'
-                      ? '#E11D48'
-                      : !isEarth
-                        ? '#15803D'
-                        : '#475569'
-                  };line-height:1.25;">${escapedSubtitle}</div>`
+                ? `<div style="font-size:9.5px;font-family:'IBM Plex Mono',monospace;color:#475569;line-height:1.25;">${escapedSubtitle}</div>`
                 : ''
             }
           </div>
@@ -469,36 +444,41 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, sites, selectedSite.id, selectedOptionName, customCoordinate]);
 
-  // Sync clicked / searched custom marker pin on Earth Leaflet map
+  // Sync the catchment pin + adjustable radius ring on the Earth map
   useEffect(() => {
     const customGroup = customPinGroupRef.current;
     const map = leafletMapRef.current;
     if (!customGroup || !map) return;
 
     customGroup.clearLayers();
-
-    if (mode !== 'earth' || !customCoordinate) return;
+    if (!customCoordinate) return;
 
     const { lat, lon } = customCoordinate;
 
-    // 5km glowing circular catchment radius around selected farm/catchment center
+    // The analysis catchment — radius is user adjustable
     L.circle([lat, lon], {
-      radius: 5000,
+      radius: catchmentRadiusMeters,
       color: '#1DB954',
       weight: 2.5,
       opacity: 0.95,
       fillColor: '#1DB954',
-      fillOpacity: 0.22,
+      fillOpacity: 0.16,
       interactive: false,
     }).addTo(customGroup);
 
     const rawTitle = isLoadingTelemetry
       ? 'Sampling NASA POWER...'
-      : customLocationName || 'Selected 5km Catchment';
+      : customLocationName || 'Selected Catchment';
     const statusTitle = rawTitle.replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const coordStr = `${Math.abs(lat).toFixed(3)}°${lat >= 0 ? 'N' : 'S'}, ${Math.abs(
       lon
     ).toFixed(3)}°${lon >= 0 ? 'E' : 'W'}`;
+    const radiusLabel =
+      catchmentRadiusMeters >= 1000
+        ? `${(catchmentRadiusMeters / 1000).toFixed(
+            catchmentRadiusMeters % 1000 === 0 ? 0 : 1
+          )} km catchment`
+        : `${catchmentRadiusMeters} m catchment`;
 
     const customHtml = `
       <div style="display:flex;align-items:center;gap:8px;transform:translate(-12px,-12px);pointer-events:none;">
@@ -507,7 +487,7 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
         </div>
         <div style="background:rgba(255,255,255,0.97);border:1.5px solid #16A34A;border-radius:8px;padding:4px 9px;box-shadow:0 4px 12px rgba(0,0,0,0.24);max-width:250px;">
           <div style="font-size:11px;font-weight:700;color:#0F172A;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${statusTitle}</div>
-          <div style="font-size:9.5px;font-family:'IBM Plex Mono',monospace;color:#15803D;line-height:1.25;white-space:nowrap;">5km Catchment · ${coordStr}</div>
+          <div style="font-size:9.5px;font-family:'IBM Plex Mono',monospace;color:#15803D;line-height:1.25;white-space:nowrap;">${radiusLabel} · ${coordStr}</div>
         </div>
       </div>
     `;
@@ -520,15 +500,14 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
         iconAnchor: [12, 12],
       }),
     }).addTo(customGroup);
-  }, [mode, customCoordinate, customLocationName, isLoadingTelemetry]);
+  }, [mode, customCoordinate, customLocationName, isLoadingTelemetry, catchmentRadiusMeters]);
 
-  // Render Overpass API discovered local farms (landuse=farmland / place=farm) inside 15km radius
+  // Render Overpass API discovered local farms inside the scanned radius
   useEffect(() => {
     const farmGroup = overpassFarmGroupRef.current;
     if (!farmGroup) return;
 
     farmGroup.clearLayers();
-    if (mode !== 'earth') return;
 
     if (scanCenter && (scannedFarms.length > 0 || hasScannedOnce)) {
       L.circle([scanCenter.lat, scanCenter.lon], {
@@ -582,19 +561,10 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
     });
   }, [mode, scannedFarms, selectedLocalFarmId, scanCenter, hasScannedOnce]);
 
-  // Pan or smoothly fly Leaflet map when switching planets, selecting pins, or searching
+  // Pan or smoothly fly the Earth map when the pin moves
   useEffect(() => {
     const map = leafletMapRef.current;
     if (!map) return;
-
-    if (mode !== 'earth') {
-      const targetZoom = Math.max(map.getZoom(), PLANET_TREK_TILES[mode].targetZoom);
-      map.flyTo([selectedSite.lat, selectedSite.lon], targetZoom, {
-        animate: true,
-        duration: 1.2,
-      });
-      return;
-    }
 
     if (skipInitialEarthPanRef.current) {
       skipInitialEarthPanRef.current = false;
@@ -620,31 +590,30 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
     }
   }, [mode, selectedSite.id, selectedSite.lat, selectedSite.lon, customCoordinate]);
 
-  // Render active spectral/orbital overlay footprints on Leaflet map across all 3 planets
+  // Render active spectral/orbital overlay footprints on the Earth map
   useEffect(() => {
     const telemetryGroup = telemetryOverlayGroupRef.current;
     if (!telemetryGroup) return;
 
     telemetryGroup.clearLayers();
 
-    const isEarth = mode === 'earth';
-    const centerLat = isEarth && customCoordinate ? customCoordinate.lat : selectedSite.lat;
-    const centerLon = isEarth && customCoordinate ? customCoordinate.lon : selectedSite.lon;
+    const centerLat = customCoordinate ? customCoordinate.lat : selectedSite.lat;
+    const centerLon = customCoordinate ? customCoordinate.lon : selectedSite.lon;
 
-    const primaryRadius = isEarth ? 6500 : 280000;
-    const secondaryRadius = isEarth ? 4800 : 210000;
-    const secondaryOffset = isEarth ? 0.035 : 3.4;
-    const gridStep = isEarth ? 0.032 : 4.2;
+    const primaryRadius = 6500;
+    const secondaryRadius = 4800;
+    const secondaryOffset = 0.035;
+    const gridStep = 0.032;
 
-    // Layer A: Soil Moisture (SMAP) / Water Ice (SHARAD) / Regolith Hydration (LEND)
+    // Layer A: Soil Moisture (SMAP)
     if (activeLayers.layer_a) {
       L.circle([centerLat, centerLon], {
         radius: primaryRadius,
         stroke: true,
-        color: isEarth ? '#F97316' : '#38BDF8',
+        color: '#F97316',
         weight: 1.4,
         dashArray: '5 4',
-        fillColor: isEarth ? '#F97316' : '#0EA5E9',
+        fillColor: '#F97316',
         fillOpacity: 0.16,
         interactive: false,
       }).addTo(telemetryGroup);
@@ -658,7 +627,7 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
       }).addTo(telemetryGroup);
     }
 
-    // Layer B: Vegetation Health (NDVI) / Terrain Slope (MOLA) / Crater Rim Slope (LOLA)
+    // Layer B: Vegetation Health (NDVI)
     if (activeLayers.layer_b) {
       L.circle([centerLat - secondaryOffset * 0.4, centerLon + secondaryOffset * 0.5], {
         radius: primaryRadius * 0.9,
@@ -671,7 +640,7 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
       }).addTo(telemetryGroup);
     }
 
-    // Layer C: Rainfall (GPM) / Solar Exposure (THEMIS) / Solar Illumination
+    // Layer C: Rainfall (GPM)
     if (activeLayers.layer_c) {
       for (let r = -1; r <= 1; r++) {
         for (let c = -1; c <= 1; c++) {
@@ -683,10 +652,10 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
               [lat1 + gridStep, lon1 + gridStep],
             ],
             {
-              color: isEarth ? '#38BDF8' : '#F59E0B',
+              color: '#38BDF8',
               weight: 0.9,
               opacity: 0.55,
-              fillColor: isEarth ? '#2563EB' : '#FBBF24',
+              fillColor: '#2563EB',
               fillOpacity: (r + c) % 2 === 0 ? 0.15 : 0.08,
               interactive: false,
             }
@@ -707,23 +676,13 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
   const handleResetView = () => {
     const map = leafletMapRef.current;
     if (!map) return;
-
-    if (mode === 'earth') {
-      map.setView([-33.92, 18.86], 9, {
-        animate: true,
-      });
-    } else {
-      map.flyTo(
-        [selectedSite.lat, selectedSite.lon],
-        PLANET_TREK_TILES[mode].targetZoom,
-        { animate: true, duration: 1.1 }
-      );
-    }
+    map.setView([-33.92, 18.86], 9, { animate: true });
   };
 
   const handleScanLocalFarms = async () => {
-    if (mode !== 'earth' || !leafletMapRef.current) return;
-    const center = leafletMapRef.current.getCenter();
+    const map = leafletMapRef.current;
+    if (!map) return;
+    const center = map.getCenter();
 
     scanAbortRef.current?.abort();
     const controller = new AbortController();
@@ -746,8 +705,8 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
       setHasScannedOnce(true);
       setIsScanningFarms(false);
 
-      if (results.length > 0 && leafletMapRef.current.getZoom() < 11) {
-        leafletMapRef.current.flyTo([center.lat, center.lng], 11, {
+      if (results.length > 0 && map.getZoom() < 11) {
+        map.flyTo([center.lat, center.lng], 11, {
           animate: true,
           duration: 1.0,
         });
@@ -772,14 +731,16 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
   };
 
   const getLayerIcon = (layerId: MapLayerId) => {
-    if (mode === 'earth') {
-      if (layerId === 'layer_a') return <Droplets className="w-3.5 h-3.5 shrink-0" />;
-      if (layerId === 'layer_b') return <Leaf className="w-3.5 h-3.5 shrink-0" />;
-      return <CloudRain className="w-3.5 h-3.5 shrink-0" />;
-    }
-    if (layerId === 'layer_a') return <Snowflake className="w-3.5 h-3.5 shrink-0" />;
-    if (layerId === 'layer_b') return <Mountain className="w-3.5 h-3.5 shrink-0" />;
-    return <Sun className="w-3.5 h-3.5 shrink-0" />;
+    if (layerId === 'layer_a') return <Droplets className="w-3.5 h-3.5 shrink-0" />;
+    if (layerId === 'layer_b') return <Leaf className="w-3.5 h-3.5 shrink-0" />;
+    return <CloudRain className="w-3.5 h-3.5 shrink-0" />;
+  };
+
+  // Toggling the layer swaps in its explainer, so the methodology note steps back.
+  const handleToggleVerticalFarming = () => {
+    setMethodologyOpen(false);
+    setGreenhouseSite(null);
+    onToggleVerticalFarming();
   };
 
   const activeLayerConfigs = asset.layers.filter((l) => activeLayers[l.id]);
@@ -790,46 +751,153 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
       customCoordinate?.lon === f.lon
   );
 
+  // log-scale slider: 0 → 500 m, 100 → 50 km
+  const sliderValue = (radius: number) =>
+    (Math.log(radius / 500) / Math.log(100)) * 100;
+  const sliderToRadius = (value: number) =>
+    Math.round(500 * Math.pow(100, value / 100));
+
+  const slopeDeg = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const s of sites) if (s.slopeDeg !== undefined) map[s.id] = s.slopeDeg;
+    return map;
+  }, [sites]);
+
+  const flatZoneKm = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const s of sites) if (s.flatZoneKm !== undefined) map[s.id] = s.flatZoneKm;
+    return map;
+  }, [sites]);
+
+  const verticalFarmingBody = useMemo(() => {
+    if (mode === 'mars') {
+      return 'NASA MRO HiRISE, CTX Digital Terrain Models (DTMs), and MGS MOLA slope datasets were used to identify flat regions (< 5° slope) suitable for vertical farming.';
+    }
+    return 'NASA LRO LOLA and LROC NAC Digital Terrain Models (DTMs) were used to identify flat regions (< 5° slope) suitable for vertical farming.';
+  }, [mode]);
+
   return (
     <section
       aria-label="Interactive Satellite Map"
       className="relative w-full lg:w-[65%] h-[54vh] lg:h-full bg-slate-950 overflow-hidden select-none border-b lg:border-b-0 lg:border-r border-slate-200"
     >
-      {/* Interactive Zoomable Leaflet Map (Earth, Mars & Moon NASA Trek Tiles) */}
-      <div
-        ref={leafletContainerRef}
-        className="w-full h-full z-0"
-        aria-label={`Interactive ${mode.toUpperCase()} Satellite Map`}
-      />
+      {/* Earth: interactive Leaflet map. Mars / Moon: real 3D globe. */}
+      {isOffWorld ? (
+        <PlanetGlobe
+          planet={mode === 'mars' ? 'mars' : 'moon'}
+          sites={sites}
+          selectedSiteId={selectedSite.id}
+          onSelectSite={(site) => {
+            onSelectSite(site);
+            onGlobeSitePick?.(site);
+            setGreenhouseSite(site);
+          }}
+          verticalFarming={verticalFarming}
+          flatZoneKm={flatZoneKm}
+          slopeDeg={slopeDeg}
+        />
+      ) : (
+        <div
+          ref={leafletContainerRef}
+          className="w-full h-full z-0"
+          aria-label="Interactive Earth Satellite Map"
+        />
+      )}
 
-      {/* Top-Left Sector Telemetry HUD + Benchmark Farms & Local Farm Scanner */}
-      <div className="absolute top-[4.5rem] sm:top-4 left-4 pointer-events-none flex flex-col gap-2 z-[500] max-w-[calc(100%-4.5rem)] sm:max-w-[540px]">
-        <div className="px-3.5 py-2.5 rounded-2xl bg-white/95 backdrop-blur-sm shadow-md text-slate-900 w-fit">
-          <div className="text-xs font-bold tracking-tight text-slate-900">
-            {mode === 'earth' ? 'Western Cape Catchments · Interactive Earth' : asset.name}
+      {/* Top-Left: catchment & farm tools (icon-first on mobile) */}
+      <div className="absolute top-4 left-4 pointer-events-none flex flex-col gap-2 z-[500] max-w-[calc(100%-4.5rem)] sm:max-w-[540px]">
+        {/* Sector telemetry HUD — desktop only, mobile keeps the map clear */}
+        {!isOffWorld && (
+          <div className="hidden sm:block px-3.5 py-2.5 rounded-2xl bg-white/95 backdrop-blur-sm shadow-md text-slate-900 w-fit">
+            <div className="text-xs font-bold tracking-tight text-slate-900">
+              Western Cape Catchments · Interactive Earth
+            </div>
+            <div className="text-[11px] font-mono text-slate-500 tabular-nums mt-0.5">
+              Click anywhere to select a catchment for NASA POWER
+            </div>
           </div>
-          <div className="text-[11px] font-mono text-slate-500 tabular-nums mt-0.5">
-            {mode === 'earth'
-              ? 'Click anywhere to select a 5km catchment for NASA POWER'
-              : asset.subtitle}
-          </div>
-        </div>
+        )}
 
-        {/* Benchmark Farms Quick-Select Bar + Scan Local Farms (Earth Mode) */}
-        {mode === 'earth' && (
-          <div className="flex flex-wrap items-center gap-2 pointer-events-auto">
+        <div className="flex flex-wrap items-center gap-2 pointer-events-auto">
+          {/* Catchment size control */}
+          {!isOffWorld && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsCatchmentOpen((v) => !v)}
+                aria-expanded={isCatchmentOpen}
+                title="Adjust the analysis catchment size"
+                className={`h-9 px-2.5 sm:px-3 rounded-xl shadow-md text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap ${
+                  isCatchmentOpen
+                    ? 'bg-[#16A34A] text-white'
+                    : 'bg-white/95 hover:bg-white text-slate-800'
+                }`}
+              >
+                <MoveHorizontal className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">
+                  Catchment{' '}
+                  <span className="font-mono tabular-nums">
+                    {catchmentRadiusMeters >= 1000
+                      ? `${(catchmentRadiusMeters / 1000).toFixed(
+                          catchmentRadiusMeters % 1000 === 0 ? 0 : 1
+                        )} km`
+                      : `${catchmentRadiusMeters} m`}
+                  </span>
+                </span>
+              </button>
+
+              {isCatchmentOpen && (
+                <div className="absolute left-0 mt-1.5 w-[260px] bg-white rounded-2xl shadow-xl border border-slate-100 p-3 z-50">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    Analysis catchment radius
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    NASA POWER is sampled at the pin; the catchment sets the footprint your result is
+                    reported over.
+                  </p>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={sliderValue(catchmentRadiusMeters)}
+                    onChange={(e) =>
+                      onCatchmentRadiusChange(sliderToRadius(Number(e.target.value)))
+                    }
+                    className="w-full mt-2"
+                    aria-label="Catchment radius"
+                  />
+                  <div className="flex items-center justify-between text-[10px] font-mono tabular-nums text-slate-500">
+                    <span>0.5 km</span>
+                    <span className="font-bold text-[#15803D]">
+                      {catchmentRadiusMeters >= 1000
+                        ? `${(catchmentRadiusMeters / 1000).toFixed(
+                            catchmentRadiusMeters % 1000 === 0 ? 0 : 1
+                          )} km`
+                        : `${catchmentRadiusMeters} m`}
+                    </span>
+                    <span>50 km</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Benchmark farms quick-select */}
+          {!isOffWorld && (
             <div ref={benchmarkMenuRef} className="relative">
               <button
                 type="button"
                 onClick={() => setIsBenchmarkMenuOpen((v) => !v)}
                 aria-expanded={isBenchmarkMenuOpen}
-                className="h-9 px-3 rounded-xl bg-white/95 hover:bg-white shadow-md text-xs font-semibold text-slate-800 inline-flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
+                title="Sample global farms"
+                className="h-9 px-2.5 sm:px-3 rounded-xl bg-white/95 hover:bg-white shadow-md text-xs font-semibold text-slate-800 inline-flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
               >
                 <Sprout className="w-3.5 h-3.5 text-[#16A34A] shrink-0" />
-                <span className="max-w-[190px] truncate">
+                <span className="hidden sm:inline max-w-[190px] truncate">
                   {activeBenchmark ? activeBenchmark.name : 'Sample Global Farms'}
                 </span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <ChevronDown className="hidden sm:block w-3.5 h-3.5 text-slate-400 shrink-0" />
               </button>
 
               {isBenchmarkMenuOpen && (
@@ -874,30 +942,34 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
                 </div>
               )}
             </div>
+          )}
 
+          {/* Scan local farms */}
+          {!isOffWorld && (
             <button
               type="button"
               onClick={() => void handleScanLocalFarms()}
               disabled={isScanningFarms}
-              className="h-9 px-3.5 rounded-xl bg-[#16A34A] hover:bg-[#15803D] disabled:bg-emerald-700 text-white shadow-md text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
+              title="Scan local farms (OpenStreetMap)"
+              className="h-9 px-2.5 sm:px-3.5 rounded-xl bg-[#16A34A] hover:bg-[#15803D] disabled:bg-emerald-700 text-white shadow-md text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
             >
               {isScanningFarms ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-                  <span>Scanning 15km...</span>
+                  <span className="hidden sm:inline">Scanning 15km...</span>
                 </>
               ) : (
                 <>
                   <Radar className="w-3.5 h-3.5 shrink-0" />
-                  <span>Scan Local Farms</span>
+                  <span className="hidden sm:inline">Scan Local Farms</span>
                 </>
               )}
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Overpass Scan Status / Error Pill */}
-        {mode === 'earth' && (hasScannedOnce || scanError) && (
+        {/* Overpass scan status / error pill */}
+        {!isOffWorld && (hasScannedOnce || scanError) && (
           <div
             className={`pointer-events-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-xl shadow-md text-[11px] font-medium w-fit ${
               scanError
@@ -924,7 +996,7 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
         )}
 
         {cursorCoords && (
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 shadow-sm text-[11px] font-mono tabular-nums text-[#15803D] font-semibold w-fit">
+          <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 shadow-sm text-[11px] font-mono tabular-nums text-[#15803D] font-semibold w-fit">
             <Crosshair className="w-3 h-3 text-[#16A34A]" />
             <span>
               {Math.abs(cursorCoords.lat).toFixed(3)}°{cursorCoords.lat >= 0 ? 'N' : 'S'},{' '}
@@ -934,7 +1006,7 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
         )}
       </div>
 
-      {/* Top-Right Floating NASA GIBS Switcher (Earth) + Zoom Controls (All Modes) */}
+      {/* Top-Right: satellite switcher + vertical farming + zoom */}
       <div className="absolute top-4 right-4 flex items-start gap-2.5 z-[500]">
         {mode === 'earth' && (
           <div ref={satelliteMenuRef} className="relative">
@@ -942,17 +1014,18 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
               type="button"
               onClick={() => setIsSatelliteMenuOpen((v) => !v)}
               aria-expanded={isSatelliteMenuOpen}
-              className="h-9 px-3.5 rounded-xl bg-white/95 hover:bg-white shadow-md text-xs font-semibold text-slate-800 inline-flex items-center gap-2 transition-colors cursor-pointer whitespace-nowrap"
+              title="Satellite imagery layer"
+              className="h-9 px-2.5 sm:px-3.5 rounded-xl bg-white/95 hover:bg-white shadow-md text-xs font-semibold text-slate-800 inline-flex items-center gap-2 transition-colors cursor-pointer whitespace-nowrap"
             >
               <Satellite className="w-3.5 h-3.5 text-[#16A34A] shrink-0" />
-              <span>
+              <span className="hidden sm:inline">
                 {earthSatelliteOverlay === 'standard'
                   ? 'Standard Satellite'
                   : earthSatelliteOverlay === 'modis_truecolor'
                     ? 'NASA True Color (MODIS)'
                     : 'NASA NDVI Index'}
               </span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <ChevronDown className="hidden sm:block w-3.5 h-3.5 text-slate-400" />
             </button>
 
             {isSatelliteMenuOpen && (
@@ -990,16 +1063,10 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
                       }`}
                     >
                       <div className="min-w-0">
-                        <div className="text-xs font-semibold leading-snug">
-                          {opt.title}
-                        </div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">
-                          {opt.subtitle}
-                        </div>
+                        <div className="text-xs font-semibold leading-snug">{opt.title}</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">{opt.subtitle}</div>
                       </div>
-                      {active && (
-                        <Check className="w-4 h-4 text-[#16A34A] shrink-0 mt-0.5" />
-                      )}
+                      {active && <Check className="w-4 h-4 text-[#16A34A] shrink-0 mt-0.5" />}
                     </button>
                   );
                 })}
@@ -1008,64 +1075,84 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
           </div>
         )}
 
-        <div className="flex flex-col gap-1.5">
+        {/* Vertical farming suitability toggle — text on desktop, icon on mobile */}
+        {isOffWorld && (
           <button
             type="button"
-            onClick={handleZoomIn}
-            aria-label="Zoom in map"
-            className="w-9 h-9 rounded-xl bg-white/95 hover:bg-white shadow-md text-slate-800 flex items-center justify-center transition-colors cursor-pointer"
+            onClick={handleToggleVerticalFarming}
+            aria-pressed={verticalFarming}
+            title="Vertical farming — highlight flat ground (< 5° slope)"
+            className={`h-9 px-2.5 sm:px-3.5 rounded-xl shadow-md text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap ${
+              verticalFarming
+                ? 'bg-emerald-500 text-white'
+                : 'bg-white/95 hover:bg-white text-slate-800'
+            }`}
           >
-            <Plus className="w-4 h-4" />
+            <PlantIcon className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden sm:inline">Vertical Farming</span>
           </button>
-          <button
-            type="button"
-            onClick={handleZoomOut}
-            aria-label="Zoom out map"
-            className="w-9 h-9 rounded-xl bg-white/95 hover:bg-white shadow-md text-slate-800 flex items-center justify-center transition-colors cursor-pointer"
-          >
-            <Minus className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={handleResetView}
-            aria-label="Reset map view"
-            className="w-9 h-9 rounded-xl bg-white/95 hover:bg-white shadow-md text-slate-800 flex items-center justify-center transition-colors cursor-pointer"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
-
-      {/* Bottom-Left Floating Map Layer Toggles */}
-      <div className="absolute bottom-4 left-4 z-[500] flex flex-col gap-2 max-w-[calc(100%-2rem)]">
-        {activeLayerConfigs.length > 0 && (
-          <div className="bg-white/95 backdrop-blur-sm shadow-md rounded-2xl px-3.5 py-2.5 flex flex-col gap-1.5 w-fit">
-            {activeLayerConfigs.map((layer) => (
-              <div key={`legend-${layer.id}`} className="flex items-center gap-2.5 text-[11px]">
-                <span className="font-mono font-semibold text-slate-700 w-16 shrink-0">
-                  {layer.shortCode}
-                </span>
-                <span className="font-mono tabular-nums text-slate-500">{layer.legendMin}</span>
-                <div
-                  className="w-20 h-2 rounded-full"
-                  style={{
-                    background: `linear-gradient(90deg, ${layer.colorStopLow}, ${layer.colorStopHigh})`,
-                  }}
-                />
-                <span className="font-mono tabular-nums font-medium text-slate-800">
-                  {layer.legendMax}
-                </span>
-              </div>
-            ))}
-          </div>
         )}
 
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-2 flex flex-wrap items-center gap-1.5 shadow-lg">
-          <div className="flex items-center gap-1.5 px-2 text-xs font-semibold text-slate-600">
-            <Layers className="w-3.5 h-3.5 text-[#16A34A]" />
-            <span>Layers</span>
+        {!isOffWorld && (
+          <div className="flex flex-col gap-1.5">
+            <button
+              type="button"
+              onClick={handleZoomIn}
+              aria-label="Zoom in map"
+              className="w-9 h-9 rounded-xl bg-white/95 hover:bg-white shadow-md text-slate-800 flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={handleZoomOut}
+              aria-label="Zoom out map"
+              className="w-9 h-9 rounded-xl bg-white/95 hover:bg-white shadow-md text-slate-800 flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <Minus className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={handleResetView}
+              aria-label="Reset map view"
+              className="w-9 h-9 rounded-xl bg-white/95 hover:bg-white shadow-md text-slate-800 flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
           </div>
-          {mode === 'earth' && (
+        )}
+      </div>
+
+      {/* Bottom-Left: legend + layer toggles (Earth) */}
+      {!isOffWorld && (
+        <div className="absolute bottom-4 left-4 z-[500] flex flex-col gap-2 max-w-[calc(100%-2rem)]">
+          {activeLayerConfigs.length > 0 && (
+            <div className="hidden sm:flex bg-white/95 backdrop-blur-sm shadow-md rounded-2xl px-3.5 py-2.5 flex-col gap-1.5 w-fit">
+              {activeLayerConfigs.map((layer) => (
+                <div key={`legend-${layer.id}`} className="flex items-center gap-2.5 text-[11px]">
+                  <span className="font-mono font-semibold text-slate-700 w-16 shrink-0">
+                    {layer.shortCode}
+                  </span>
+                  <span className="font-mono tabular-nums text-slate-500">{layer.legendMin}</span>
+                  <div
+                    className="w-20 h-2 rounded-full"
+                    style={{
+                      background: `linear-gradient(90deg, ${layer.colorStopLow}, ${layer.colorStopHigh})`,
+                    }}
+                  />
+                  <span className="font-mono tabular-nums font-medium text-slate-800">
+                    {layer.legendMax}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-2 flex flex-wrap items-center gap-1.5 shadow-lg max-w-full overflow-x-auto">
+            <div className="flex items-center gap-1.5 px-2 text-xs font-semibold text-slate-600 shrink-0">
+              <Layers className="w-3.5 h-3.5 text-[#16A34A]" />
+              <span className="hidden sm:inline">Layers</span>
+            </div>
             <button
               type="button"
               onClick={() => setShowCroplandOverlay((v) => !v)}
@@ -1077,36 +1164,37 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
                   : 'bg-emerald-50 text-[#15803D] border border-emerald-200 hover:bg-emerald-100'
               }`}
             >
-              <span>🌾 NASA Cropland Extent (GFSAD)</span>
+              <span aria-hidden>🌾</span>
+              <span className="hidden sm:inline">NASA Cropland Extent (GFSAD)</span>
             </button>
-          )}
-          {asset.layers.map((layer) => {
-            const active = activeLayers[layer.id];
-            return (
-              <button
-                key={layer.id}
-                type="button"
-                onClick={() => onToggleLayer(layer.id)}
-                aria-pressed={active}
-                title={layer.description}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                  active
-                    ? 'bg-[#16A34A] text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900'
-                }`}
-              >
-                {getLayerIcon(layer.id)}
-                <span>{layer.label}</span>
-              </button>
-            );
-          })}
+            {asset.layers.map((layer) => {
+              const active = activeLayers[layer.id];
+              return (
+                <button
+                  key={layer.id}
+                  type="button"
+                  onClick={() => onToggleLayer(layer.id)}
+                  aria-pressed={active}
+                  title={layer.description}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                    active
+                      ? 'bg-[#16A34A] text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900'
+                  }`}
+                >
+                  {getLayerIcon(layer.id)}
+                  <span className="hidden sm:inline">{layer.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Bottom-Right GFSAD / NDVI Legends + Map Zoom Readout */}
+      {/* Bottom-Right: layer legends + zoom readout */}
       <div className="absolute bottom-7 right-4 flex flex-col items-end gap-2 z-[500] pointer-events-none">
         {mode === 'earth' && showCroplandOverlay && (
-          <div className="bg-white/95 backdrop-blur-sm shadow-lg rounded-2xl px-3.5 py-2.5 text-[11px] text-slate-800 space-y-1.5 pointer-events-auto max-w-[245px]">
+          <div className="hidden sm:block bg-white/95 backdrop-blur-sm shadow-lg rounded-2xl px-3.5 py-2.5 text-[11px] text-slate-800 space-y-1.5 pointer-events-auto max-w-[245px]">
             <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
               <span>🌾</span>
               <span>NASA Cropland Extent (GFSAD)</span>
@@ -1121,10 +1209,8 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
         )}
 
         {mode === 'earth' && earthSatelliteOverlay === 'modis_ndvi' && (
-          <div className="bg-white/95 backdrop-blur-sm shadow-lg rounded-2xl px-3.5 py-2.5 text-[11px] text-slate-800 space-y-1.5 pointer-events-auto">
-            <div className="font-bold text-slate-900 text-xs">
-              NASA MODIS NDVI Legend
-            </div>
+          <div className="hidden sm:block bg-white/95 backdrop-blur-sm shadow-lg rounded-2xl px-3.5 py-2.5 text-[11px] text-slate-800 space-y-1.5 pointer-events-auto">
+            <div className="font-bold text-slate-900 text-xs">NASA MODIS NDVI Legend</div>
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-sm bg-[#8B5A2B] shrink-0" />
               <span>Brown = Dry / Bare Soil</span>
@@ -1140,10 +1226,67 @@ export const SatelliteMapPanel: React.FC<SatelliteMapPanelProps> = ({
           </div>
         )}
 
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/95 shadow-md text-[11px] font-mono tabular-nums text-slate-800 font-medium">
-          <span>Zoom Z{zoomLevel}{mode !== 'earth' ? ' / 7' : ''}</span>
-        </div>
+        {!isOffWorld && (
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/95 shadow-md text-[11px] font-mono tabular-nums text-slate-800 font-medium">
+            <span>Zoom Z{zoomLevel}</span>
+          </div>
+        )}
       </div>
+
+      {/* Off-world explainers — one at a time, most specific wins */}
+      {isOffWorld && greenhouseSite && (
+        <InfoPopup
+          open
+          onClose={() => setGreenhouseSite(null)}
+          eyebrow="Greenhouse site"
+          title={greenhouseSite.name}
+          body={
+            (greenhouseSite.slopeDeg ?? 99) < 5
+              ? mode === 'mars'
+                ? 'This is the ideal location to plant a greenhouse.'
+                : 'This is the ideal location to plant a greenhouse on the moon.'
+              : 'This slope is too steep for a greenhouse — the orbital altimetry puts it well above the 5° safe-build threshold.'
+          }
+          footnote={`Measured slope ${greenhouseSite.slopeDeg ?? '—'}° · ${greenhouseSite.areaLabel}`}
+          accent="emerald"
+        />
+      )}
+
+      {isOffWorld && !greenhouseSite && verticalFarming && (
+        <InfoPopup
+          open
+          onClose={handleToggleVerticalFarming}
+          eyebrow="Vertical farming suitability"
+          title="Flat ground, ready to build on"
+          body={verticalFarmingBody}
+          footnote="Threshold: slope under 5° — the aerospace engineering limit that keeps heavy structures from tipping and minimises foundation excavation."
+          accent="cyan"
+        />
+      )}
+
+      {isOffWorld && !greenhouseSite && !verticalFarming && (
+        <InfoPopup
+          open={methodologyOpen}
+          onClose={() => setMethodologyOpen(false)}
+          eyebrow="NASA data methodology"
+          title={METHODOLOGY[mode === 'mars' ? 'mars' : 'moon'].title}
+          body={METHODOLOGY[mode === 'mars' ? 'mars' : 'moon'].body}
+          footnote={METHODOLOGY[mode === 'mars' ? 'mars' : 'moon'].footnote}
+          accent="emerald"
+        />
+      )}
+
+      {/* Off-world: reopen the methodology note */}
+      {isOffWorld && !greenhouseSite && !verticalFarming && !methodologyOpen && (
+        <button
+          type="button"
+          onClick={() => setMethodologyOpen(true)}
+          className="absolute bottom-4 left-4 z-[500] h-9 px-3 rounded-xl bg-white/95 hover:bg-white shadow-md text-xs font-semibold text-slate-800 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+        >
+          <FlaskConical className="w-3.5 h-3.5 text-[#16A34A]" />
+          How we found these sites
+        </button>
+      )}
     </section>
   );
 };
