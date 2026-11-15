@@ -22,7 +22,7 @@ export default function Rotations({ strategies }: Props) {
       />
 
       {/* Ranking strip */}
-      <div className="mb-6 rounded-2xl border border-paper-3 bg-white/60 p-4 shadow-card">
+      <div className="mb-6 rounded-2xl border border-slate-100 bg-white p-4 shadow-card">
         <p className="mb-3 flex items-center gap-2 text-xs font-semibold text-ink-2">
           <Compass className="h-3.5 w-3.5 text-ochre" /> Ranking for your priorities
         </p>
@@ -40,7 +40,7 @@ export default function Rotations({ strategies }: Props) {
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid gap-5 @3xl:grid-cols-2">
         {strategies.map((s) => (
           <StrategyCard key={s.id} s={s} />
         ))}
@@ -63,7 +63,7 @@ function StrategyCard({ s }: { s: Strategy }) {
   return (
     <article
       className={`rise flex flex-col rounded-2xl border p-5 shadow-card ${
-        s.kind === 'current' ? 'border-ink/25 bg-white/75' : 'border-leaf/40 bg-white/75'
+        s.kind === 'current' ? 'border-ink/25 bg-white' : 'border-leaf/40 bg-white'
       }`}
     >
       <header className="mb-4 flex items-start justify-between gap-4">
@@ -95,15 +95,15 @@ function StrategyCard({ s }: { s: Strategy }) {
       </div>
 
       {/* criteria */}
-      <div className="mb-4 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+      <div className="mb-4 grid gap-x-6 gap-y-3 @md:grid-cols-2">
         {crit.map((c) => (
           <ScoreBar key={c.key} score={c.score} label={c.label} detail={c.detail} />
         ))}
       </div>
 
       {/* explainer tabs */}
-      <div className="mt-auto rounded-xl border border-paper-3 bg-paper-2/60">
-        <div className="flex border-b border-paper-3">
+      <div className="mt-auto rounded-xl border border-slate-100 bg-slate-100/60">
+        <div className="flex border-b border-slate-100">
           {(
             [
               ['why', 'Why this?', Lightbulb],
@@ -176,7 +176,7 @@ function StrategyCard({ s }: { s: Strategy }) {
 export function WaterBalanceStrip({ strategies }: { strategies: Strategy[] }) {
   if (!strategies.length) return null
   return (
-    <div className="mt-6 flex flex-wrap items-center gap-2 rounded-2xl border border-paper-3 bg-white/60 px-4 py-3 shadow-card">
+    <div className="mt-6 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-card">
       <Sprout className="h-4 w-4 text-leaf" />
       <span className="text-xs text-ink-3">
         Scores blend water fit, soil health, erosion, pest breaks, climate fit, income and forage — weighted by the

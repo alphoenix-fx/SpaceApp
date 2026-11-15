@@ -5,6 +5,8 @@ import { SectionHead, Slider } from './ui'
 interface Props {
   priorities: Priorities
   onChange: (p: Priorities) => void
+  /** when embedded in a card, skip the section heading */
+  embedded?: boolean
 }
 
 const PRESET_VOICES: Array<{ label: string; note: string; p: Priorities }> = [
@@ -30,16 +32,18 @@ const PRESET_VOICES: Array<{ label: string; note: string; p: Priorities }> = [
   },
 ]
 
-export default function PrioritiesPanel({ priorities, onChange }: Props) {
+export default function PrioritiesPanel({ priorities, onChange, embedded = false }: Props) {
   return (
     <section id="priorities" className="scroll-mt-24">
-      <SectionHead
-        index="02"
-        title="Your priorities"
-        sub="There is no single “best” rotation — the right choice depends on what you need it to deliver. Set what matters most; every strategy is re-ranked live as you move these."
-      />
+      {!embedded && (
+        <SectionHead
+          index="02"
+          title="Your priorities"
+          sub="There is no single “best” rotation — the right choice depends on what you need it to deliver. Set what matters most; every strategy is re-ranked live as you move these."
+        />
+      )}
 
-      <div className="rounded-2xl border border-paper-3 bg-white/60 p-5 shadow-card">
+      <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-card">
         <div className="mb-5 flex flex-wrap gap-2">
           {PRESET_VOICES.map((v) => {
             const active = JSON.stringify(v.p) === JSON.stringify(priorities)
@@ -51,7 +55,7 @@ export default function PrioritiesPanel({ priorities, onChange }: Props) {
                 className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all ${
                   active
                     ? 'border-ochre bg-ochre text-white shadow-card'
-                    : 'border-paper-3 bg-white/70 text-ink-2 hover:border-ochre/50 hover:bg-ochre/5'
+                    : 'border-slate-100 bg-white text-ink-2 hover:border-ochre/50 hover:bg-ochre/5'
                 }`}
               >
                 {v.label}
@@ -60,7 +64,7 @@ export default function PrioritiesPanel({ priorities, onChange }: Props) {
           })}
         </div>
 
-        <div className="grid gap-x-10 gap-y-4 sm:grid-cols-2">
+        <div className="grid gap-x-8 gap-y-3 @md:grid-cols-2">
           <Slider
             label="Conserve water"
             icon={<Droplets className="h-3.5 w-3.5 text-water" />}

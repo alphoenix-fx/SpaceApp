@@ -61,7 +61,7 @@ const SOURCES: Array<[string, string]> = [
 
 export default function Footer() {
   return (
-    <footer className="mt-20 border-t border-paper-3 bg-paper-2/60">
+    <footer className="mt-20 border-t border-slate-100 bg-slate-100/60">
       <div className="mx-auto max-w-6xl px-5 py-14">
         <div className="grid gap-10 md:grid-cols-2">
           {/* Glossary */}
@@ -71,7 +71,7 @@ export default function Footer() {
             </h3>
             <div className="space-y-3">
               {GLOSSARY.map(([term, def]) => (
-                <details key={term} className="group rounded-xl border border-paper-3 bg-white/60 px-3.5 py-2.5">
+                <details key={term} className="group rounded-xl border border-slate-100 bg-white px-3.5 py-2.5">
                   <summary className="cursor-pointer list-none text-xs font-semibold text-ink marker:hidden">
                     <span className="mr-1.5 text-leaf">＋</span>
                     {term}
@@ -89,7 +89,7 @@ export default function Footer() {
             </h3>
             <div className="space-y-3">
               {SOURCES.map(([name, def]) => (
-                <div key={name} className="rounded-xl border border-paper-3 bg-white/60 px-3.5 py-2.5">
+                <div key={name} className="rounded-xl border border-slate-100 bg-white px-3.5 py-2.5">
                   <p className="flex items-center gap-1.5 text-xs font-semibold text-ink">
                     <Database className="h-3 w-3 text-water" /> {name}
                   </p>

@@ -70,7 +70,7 @@ export default function TrendCard({ trend }: { trend: DailyTrend }) {
             className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all ${
               metric === m.id
                 ? 'border-ink bg-ink text-paper'
-                : 'border-paper-3 bg-white/70 text-ink-2 hover:border-ink/30'
+                : 'border-slate-100 bg-white text-ink-2 hover:border-ink/30'
             }`}
           >
             {m.label}
@@ -78,9 +78,9 @@ export default function TrendCard({ trend }: { trend: DailyTrend }) {
         ))}
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_260px] lg:items-start">
+      <div className="grid gap-4 @2xl:grid-cols-[1fr_230px] @2xl:items-start">
         {/* Mini chart */}
-        <div className="rounded-xl border border-paper-3 bg-paper/40 p-3">
+        <div className="rounded-xl border border-slate-100 bg-slate-100/40 p-3">
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={`${meta.label} per year, ${years[0]} to ${years[years.length - 1]}`}>
             {/* baseline */}
             <line x1={pad.l} y1={H - pad.b} x2={W - pad.r} y2={H - pad.b} stroke="var(--color-paper-3)" strokeWidth="1" />
@@ -124,7 +124,7 @@ export default function TrendCard({ trend }: { trend: DailyTrend }) {
 
         {/* Then vs now numbers */}
         <div className="space-y-2.5">
-          <div className="rounded-xl border border-paper-3 bg-white/70 p-3.5">
+          <div className="rounded-xl border border-slate-100 bg-white p-3.5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-3">
               {years[0]}–{years[Math.min(4, years.length - 1)]} (then)
             </p>
@@ -132,7 +132,7 @@ export default function TrendCard({ trend }: { trend: DailyTrend }) {
               {metric === 'temp' ? `${thenValue.toFixed(1)} °C` : `${Math.round(thenValue)} ${meta.unit}`}
             </p>
           </div>
-          <div className="rounded-xl border border-paper-3 bg-white/70 p-3.5">
+          <div className="rounded-xl border border-slate-100 bg-white p-3.5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-3">
               {years[Math.max(0, years.length - 5)]}–{years[years.length - 1]} (now)
             </p>

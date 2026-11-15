@@ -64,50 +64,48 @@ export default function VerdictCard({
       sub="One answer first — then the details that justify it."
       icon={<Sparkles className="h-5 w-5 text-ochre" />}
     >
-      <div className="grid gap-6 lg:grid-cols-[230px_1fr] lg:items-start">
+      <div className="grid gap-4 @md:grid-cols-[190px_1fr] @md:items-start">
         {/* Score badge */}
         <div className="flex flex-col items-center">
           <div
-            className={`flex w-full flex-col items-center rounded-2xl border-4 ${s.ring} ${s.softBg} px-4 py-6`}
+            className={`flex w-full flex-col items-center rounded-2xl border-4 ${s.ring} ${s.softBg} px-4 py-5`}
           >
-            <span className="data-tabular font-display text-6xl font-semibold leading-none text-ink">
+            <span className="data-tabular text-5xl font-bold leading-none text-slate-900">
               {verdict.score}
-              <span className="text-2xl text-ink-3">%</span>
+              <span className="text-xl text-slate-400">%</span>
             </span>
-            <span className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-3">
+            <span className="mt-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
               Crop suitability
             </span>
             <span
-              className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold tracking-widest text-white ${s.bg}`}
+              className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white ${s.bg}`}
             >
-              <Icon className="h-3.5 w-3.5" />
+              <Icon className="h-3 w-3" />
               {s.label}
             </span>
           </div>
-          <p className="mt-2 text-center text-[11px] leading-snug text-ink-3">
-            {s.tag} · <span className="font-medium text-ink-2">{verdict.dominantCrop}</span>
+          <p className="mt-2 text-center text-[11px] leading-snug text-slate-500">
+            {s.tag} · <span className="font-semibold text-slate-700">{verdict.dominantCrop}</span>
           </p>
         </div>
 
         {/* Headline + summary + drivers */}
         <div>
-          <h3 className="font-display text-2xl font-semibold leading-tight text-ink sm:text-[28px]">
-            {verdict.headline}
-          </h3>
-          <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-ink-2">{summary}</p>
+          <h3 className="text-base font-bold leading-snug text-slate-900">{verdict.headline}</h3>
+          <p className="mt-2 text-xs leading-relaxed text-slate-600">{summary}</p>
 
           {verdict.trendNote && (
-            <p className="mt-3 flex max-w-2xl items-start gap-2 rounded-xl bg-panel/90 px-3.5 py-2.5 text-[12px] leading-snug text-panel-text">
-              <MoveRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-leaf-3" />
+            <p className="mt-2.5 flex items-start gap-1.5 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-[11px] leading-snug text-[#15803D]">
+              <MoveRight className="mt-0.5 h-3 w-3 shrink-0" />
               {verdict.trendNote}
             </p>
           )}
 
-          <div className="mt-4">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">
+          <div className="mt-3">
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
               What drove the score
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {verdict.drivers.map((d) => (
                 <Chip key={d.label} tone={d.score < 50 ? 'clay' : d.score < 70 ? 'ochre' : 'leaf'}>
                   {d.label} · {d.score}
@@ -116,7 +114,7 @@ export default function VerdictCard({
             </div>
           </div>
 
-          <p className="mt-4 text-[11px] leading-snug text-ink-3">
+          <p className="mt-3 text-[10px] leading-snug text-slate-400">
             The score weighs water balance, climate fit, soil health, erosion risk, income and forage
             against the priorities you set. It supports your judgement — it never replaces it.
           </p>

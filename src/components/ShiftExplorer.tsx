@@ -89,7 +89,7 @@ export default function ShiftExplorer({ ctx, dominantCropId }: Props) {
         sub={`The "Field Shift" question. We test ${crop.name} against the climates of South Africa’s other production regions using NASA POWER climatology — the same crop, different ground.`}
       />
 
-      <div className="rounded-2xl border border-paper-3 bg-white/60 p-4 shadow-card sm:p-5">
+      <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-card sm:p-5">
         {!ready ? (
           <div className="relative overflow-hidden py-8 text-center">
             <div className="sweep pointer-events-none absolute inset-0 opacity-40" />
@@ -117,7 +117,7 @@ export default function ShiftExplorer({ ctx, dominantCropId }: Props) {
                 <div
                   key={r.id}
                   className={`flex items-center gap-3 rounded-xl border px-3.5 py-2.5 ${
-                    r.isHome ? 'border-leaf/50 bg-leaf/5' : 'border-paper-3 bg-white/50'
+                    r.isHome ? 'border-leaf/50 bg-leaf/5' : 'border-slate-100 bg-white/50'
                   }`}
                 >
                   <span

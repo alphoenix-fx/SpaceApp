@@ -171,7 +171,7 @@ export default function FieldPulseCard({
       sub="What the satellites and models say about this field right now."
       icon={<Droplets className="h-5 w-5 text-water" />}
     >
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 @2xl:grid-cols-3">
         {soil ? (
           <Gauge
             label="Root-zone soil moisture"
@@ -236,7 +236,7 @@ export default function FieldPulseCard({
         )}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl bg-paper/60 px-3.5 py-2.5 text-[11px] text-ink-3">
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl bg-slate-100/60 px-3.5 py-2.5 text-[11px] text-ink-3">
         <span className="flex items-center gap-1.5">
           <CloudRain className="h-3.5 w-3.5 text-water" />
           {trend ? `${trend.recent.rainMm} mm rain in the last ${trend.recent.days} observed days` : 'recent rain unknown'}

@@ -1,4 +1,4 @@
-# 🛰️ FieldShift — Adapting Farms with NASA Data
+# 🛰️ FieldShift — Planetary Innovation Agency
 
 A **decision-support web app** for South African farmers, built for the
 [NASA International Space Apps Challenge 2026](https://www.spaceappschallenge.org/2026/challenges/adapting-farms-with-nasa-data/)
@@ -14,12 +14,45 @@ agricultural expertise.
 
 ---
 
+## Architecture — the console, plus the FieldShift engine
+
+The app is one React + Vite codebase with two cooperating halves:
+
+| Layer | What it is |
+| --- | --- |
+| **Planetary console** *(main app)* | The full-bleed satellite map, the Earth / Mars / Moon mode switcher, global place search, the live **NASA POWER** telemetry drawer (suitability ring, live conditions vs. crop ideals, crop-shift options, 10-year dual trend) and the **Export Simple Farm Report** modal. |
+| **FieldShift engine** *(add-on)* | Mounted as a second tab in the same right-hand drawer. A deeper diagnosis for the *same* pinned field: 30-year POWER climatology, a 15-year daily archive, the Keep/Adapt/Shift verdict, live field pulse, alternative crops with a 2-season plan, the then-vs-now trend, rotation strategies, the season playbook and the field-shift explorer. |
+
+Both halves share one map, one coordinate state and one theme — clicking the
+map or searching for a town moves both. The console answers *"what is it like
+right now?"* in seconds; the engine answers *"given 15 years of shift, what
+should I plant and when?"*
+
+### The flow
+
+1. **Pin your field** — click the map, drag the pin, search any town, pick one
+   of the sample global benchmark farms, or scan 15 km of real OpenStreetMap
+   farmland around you.
+2. **Live Console** *(default tab)* — NASA POWER telemetry for that point:
+   suitability index for the selected crop, root-zone moisture / temperature /
+   rainfall against that crop's ideal ranges, top alternatives, and the trend.
+3. **FieldShift Engine** *(add-on tab)* — set your soil and rotation, weight
+   your priorities, then run the full diagnosis:
+   - **Top verdict** — colour-coded badge + one plain-English sentence.
+   - **Live field pulse** — root-zone soil moisture, MODIS **NDVI** plant health
+     vs the same fortnight in prior years, and a 14-day heat & rainfall outlook.
+   - **What to do next** — top-3 alternative crops with match %, a suggested
+     2-season rotation, and a *when to act* window.
+   - **How your farm has changed** — first 5 vs latest 5 years of the record.
+   - **Full analysis** *(on demand)* — 30-year climate record, monthly charts,
+     rotation strategies, the complete season playbook, and the shift explorer.
+
 ## What it does (mapped to the challenge brief)
 
 | Challenge asks for | FieldShift delivers |
 | --- | --- |
-| NASA Earth observations | NASA **POWER** agroclimatology (30+ yr normals + a 15-yr daily archive) for the exact field point; **MODIS Terra** (GIBS) true-colour, **NDVI 8-day 250 m**, **NDVI 16-day 2000–present**, **Land Surface Temperature** and **GFSAD cropland extent** layers; **Copernicus DEM** (via Open-Meteo) elevation → slope → erosion risk |
-| Pin the farm, pick crops | A live **Field Console**: full-bleed satellite map, layer switcher, place search (or paste `lat, lon`), draggable pin, a scan of **real nearby farms** from OpenStreetMap/Overpass, then one of 5 SA demo regions — or your own spot — and the rotation you actually grow |
+| NASA Earth observations | NASA **POWER** agroclimatology (30+ yr normals + a 15-yr daily archive) for the exact field point; **MODIS Terra** (GIBS) true-colour, **NDVI 8-day 250 m**, **NDVI 16-day 2000–present**, **Land Surface Temperature** and **GFSAD cropland extent** layers; **Copernicus DEM** (via Open-Meteo) elevation → slope → erosion risk; **NASA Trek** orbital mosaics for the Mars and Moon modes |
+| Pin the farm, pick crops | Full-bleed interactive satellite map, draggable pin, global place search, sample global benchmark farms, a 15 km **OpenStreetMap farmland scan**, then one of 5 SA demo regions — or your own spot — and the rotation you actually grow |
 | Past-vs-present trends | **Then vs now**: first 5 vs latest 5 years of the 15-yr NASA record — rainfall %, growing-season root-zone wetness, days above 32 °C, mean day-high, plus a full 15-year chart and wet-season onset shift |
 | Traffic-light Crop Viability Score | A single **Keep / Adapt / Shift** verdict (green/amber/red) for the dominant crop, blending water balance, climate fit, soil/erosion and **trend momentum** — one sentence of plain English + its top drivers |
 | Field Shifting Recommendations | Green/amber/red **rotation strategies** with why/evidence/benefits/gaps/risks; the Actions card ranks the top-3 **alternative crops** for this field with match %, a suggested 2-season rotation and a *when to act* window — plus a **Field-Shift Explorer** scoring the same crop vs other SA regions |
@@ -29,32 +62,11 @@ agricultural expertise.
 | Farmer priorities | 5 sliders (water, soil health, income, erosion, forage) that **re-rank every strategy live** |
 | ≥ 3 rotation strategies incl. current | Baseline (“your current rotation”) + up to 3 data-driven suggestions (drought-smart, legume bridge, soil-cover builder, forage booster, market spreader) |
 | Why / evidence / benefits / gaps / risks | Every strategy card has these sections, with **evidence lines quoting the actual computed data** |
-| Visualisation | A **diagnostic-first** layout: four plain-language cards (verdict, field pulse, actions, then-vs-now trend) with colour-coded badges, gauges and toggles, on top of a collapsible *Full analysis* deep dive |
 | Farmer-centred design | Plain-language captions everywhere, glossary, priority “voices”, a persistent *supports-not-replaces* disclaimer, and degradation-friendly error states |
 
 The scoring engine is **rule-based and explainable by design** — every
 criterion (water fit, soil health, erosion, pest/disease break, climate fit,
 income, forage) is a transparent calculation from the data, not a black box.
-
-### The four diagnostic cards
-
-1. **Top verdict** — large colour-coded badge (KEEP / ADAPT / SHIFT), one plain-English sentence, then the drivers behind the score.
-2. **Live field pulse** — 3–4 simple gauges: root-zone soil moisture, MODIS **NDVI** plant-health vs the same fortnight in prior years, and a 14-day heat & rainfall outlook flagging heatwaves and dry spells (Open-Meteo ECMWF/GFS, benchmarked against NASA POWER normals — labelled accordingly, not passed off as NASA data).
-3. **What to do next** — top-3 alternative crops with match %, a suggested 2-season rotation, and a *when to act* window (planting date, wet-season onset shift, peak irrigation, harvest).
-4. **How your farm has changed** — first 5 vs latest 5 years (then vs now) with toggles for rainfall, hot days and day-highs.
-
-Everything heavier — 30-yr climate record, monthly charts, rotation strategies,
-the full playbook, the shift explorer — lives one click away under
-**Full analysis**.
-
-## The flow
-
-0. **Field Console** — the app's front door: pin your field on the live map, read straight-off-orbit numbers, radiograph the neighbourhood (real farms & plots from OpenStreetMap), and search any farm or town.
-1. **01 Field** — pick a demo region or your own spot, describe soil and slope, build the rotation you grow. The console above already placed the pin — this is the paperwork.
-2. **02 Priorities** — weight what matters (water, soil, income, erosion, forage); every score re-ranks instantly.
-3. **Analyse with NASA data** — one click pulls the POWER climatology + 15-yr daily archive for your point and starts the diagnosis.
-4. **The four cards** — verdict → pulse → actions → then-vs-now trend.
-5. **Full analysis** *(on demand)* — metric cards, monthly rain/ET₀/temperature charts, rotation strategies, the complete season playbook, and the then-vs-now shift explorer.
 
 ## The data sources
 
@@ -68,14 +80,17 @@ the full playbook, the shift explorer — lives one click away under
   *extremes* for `T2M_MAX`/`T2M_MIN`, not means. Reference ET₀ is computed
   client-side with **Hargreaves–Samani** from those Tmax/Tmin means (POWER
   exposes no ET₀ parameter over REST).
-- **NASA GIBS** — WMTS tiles, rendered live in the console and in the analysis
-  view: `MODIS_Terra_CorrectedReflectance_TrueColor`,
+  The console uses a single fast daily pass for its live readout; the engine
+  uses the full climatology + daily archive for the diagnosis.
+- **NASA GIBS** — WMTS tiles: `MODIS_Terra_CorrectedReflectance_TrueColor`,
   `MODIS_Terra_NDVI_8Day` (250 m, 2025-present), `MODIS_Terra_L3_NDVI_16Day`
   (5 km, 2000-present — used for the multi-year NDVI comparison),
   `MODIS_Terra_Land_Surface_Temp_Day`, `Agricultural_Lands_Croplands_2000`.
   For the in-app NDVI reading, tile pixels are inverted from colour back to
   NDVI using a lookup table auto-generated from the GIBS colormaps
   (`scripts/gen-ndvi-lut.cjs` → `src/lib/ndviLut.ts`).
+- **NASA Trek** — Viking MDIM (Mars) and LRO WAC (Moon) global mosaics for the
+  off-world modes.
 - **Copernicus DEM GLO-90** via the Open-Meteo Elevation API — centre + 12
   surrounding points → steepest local gradient → erosion-risk factor (with a
   manual slope slider fallback).
@@ -130,35 +145,48 @@ scripts/
   gen-ndvi-lut.cjs      auto-generates the GIBS colour→NDVI lookup table
   prepare-images.ps1    crops/landscape assets, resized for the web
 src/
-  lib/
-    power.ts       NASA POWER client, Hargreaves ET₀, climate features,
-                     then/now trend, wet-season onset shift
-    ndvi.ts        GIBS tile sampling → field NDVI vs prior years
-    ndviLut.ts     generated colour→NDVI LUT (MODIS + L3 ramps)
-    forecast.ts    14-day outlook vs NASA POWER normals
-    places.ts      reverse geocode / place search / nearby farms (OSM)
-    scoring.ts     verdict engine, crop viability & match scoring,
-                     strategy generation, alternative-crop ranking
-    alerts.ts      season playbook (plant / irrigate / harvest / watches)
-    crops.ts       SA rotation-crop knowledge base (20 crops)
-    soil.ts        texture → water-holding / erodibility profiles
-    regions.ts     5 demo farm presets
+  data/
+    planetaryData.ts    Earth / Mars / Moon sites, map layer configs,
+                        benchmark farms (the console's data model)
+  services/             the console's live layer
+    nasaPowerApi.ts     fast NASA POWER daily pass → telemetry + suitability
+    reverseGeocode.ts   BigDataCloud + Nominatim place lookup
+    overpassFarms.ts    OpenStreetMap farmland scan
+  lib/                  the FieldShift engine's data layer
+    power.ts            NASA POWER client, Hargreaves ET₀, climate features,
+                        then/now trend, wet-season onset shift
+    ndvi.ts             GIBS tile sampling → field NDVI vs prior years
+    ndviLut.ts          generated colour→NDVI LUT (MODIS + L3 ramps)
+    forecast.ts         14-day outlook vs NASA POWER normals
+    scoring.ts          verdict engine, crop viability & match scoring,
+                        strategy generation, alternative-crop ranking
+    alerts.ts           season playbook (plant / irrigate / harvest / watches)
+    crops.ts            SA rotation-crop knowledge base (20 crops)
+    soil.ts             texture → water-holding / erodibility profiles
+    regions.ts          5 SA demo farm presets
+    terrain.ts          Copernicus DEM slope sampling (Open-Meteo)
   components/
-    FieldConsole.tsx      the hero: satellite map, GIBS layers, search,
-                          nearby-farm scan, live readout, cycle strip
-    FieldPanel.tsx        region presets, soil, slope (map lives in console)
-    PrioritiesPanel.tsx   farmer priority sliders + preset “voices”
-    VerdictCard.tsx       traffic-light Keep / Adapt / Shift + drivers
-    FieldPulseCard.tsx    moisture / NDVI gauges + 14-day outlook
-    ActionsCard.tsx       alternative crops (photos), 2-season plan, when to act
-    TrendCard.tsx         then-vs-now card (rain / hot days / highs)
-    DataReadout.tsx       metric cards + charts — lazy, under Full analysis
-    Rotations.tsx         rotation strategies (why/evidence/gaps/risks)
-    AlertsPanel.tsx       dated season playbook
-    ShiftExplorer.tsx     same crop vs other SA production regions
-    ui.tsx                shared DiagnosticCard, Gauge, Chip, ScoreRing
-    Footer.tsx            glossary, data & method, disclaimer
-  App.tsx                 intro band + console + flow + Full analysis toggle
+    TopNavBar.tsx       emerald header: brand, global search, mode switcher
+    SatelliteMapPanel.tsx  full-bleed map, GIBS switcher, benchmark farms,
+                        local farm scanner, telemetry footprints, legends
+    DiagnosticDrawer.tsx    live console cards: suitability ring, conditions,
+                        crop shift, dual trend, export CTA
+    DualTrendChart.tsx      hoverable 10-year dual-line chart
+    SmsReportModal.tsx      printable / copyable farm report
+    FieldShiftAddon.tsx     the add-on tab: hosts the whole FieldShift engine
+    VerdictCard.tsx         traffic-light Keep / Adapt / Shift + drivers
+    FieldPulseCard.tsx      moisture / NDVI gauges + 14-day outlook
+    ActionsCard.tsx         alternative crops (photos), 2-season plan, when to act
+    TrendCard.tsx           then-vs-now card (rain / hot days / highs)
+    FieldPanel.tsx          region presets, soil, slope, rotation builder
+    PrioritiesPanel.tsx     farmer priority sliders + preset “voices”
+    DataReadout.tsx         metric cards + charts — lazy, under Full analysis
+    Rotations.tsx           rotation strategies (why/evidence/gaps/risks)
+    AlertsPanel.tsx         dated season playbook
+    ShiftExplorer.tsx       same crop vs other SA production regions
+    ui.tsx                 shared DiagnosticCard, Gauge, Chip, ScoreRing
+    Footer.tsx             glossary, data & method, disclaimer
+  App.tsx                 shell: nav + map + tabbed drawer + report modal
 ```
 
 ## Judging notes
@@ -175,9 +203,10 @@ src/
   judgement deferred).
 - **NASA data actually used:** POWER is fetched live per field (normals +
   daily), GIBS tiles render the actual MODIS layers and are sampled
-  pixel-by-pixel for the NDVI comparison, and Copernicus DEM samples the actual
-  terrain. Nothing in the *data* is mocked. Visual assets are concept
-  imagery (not photographs of specific farms).
+  pixel-by-pixel for the NDVI comparison, NASA Trek serves the off-world
+  mosaics, and Copernicus DEM samples the actual terrain. Nothing in the
+  *data* is mocked. Visual assets are concept imagery (not photographs of
+  specific farms).
 - **Honesty about limits:** satellite-derived monthly normals are coarse
   (MERRA-2 grid); POWER daily lags ~a week; the 14-day outlook is a real
   forecast (ECMWF/GFS via Open-Meteo), benchmarked on NASA normals and

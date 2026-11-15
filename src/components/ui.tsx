@@ -12,7 +12,7 @@ export function Chip({
   tone?: 'neutral' | 'leaf' | 'ochre' | 'clay' | 'water' | 'dark'
 }) {
   const tones: Record<string, string> = {
-    neutral: 'bg-paper-2 text-ink-2 border-paper-3',
+    neutral: 'bg-slate-100 text-ink-2 border-slate-100',
     leaf: 'bg-leaf/10 text-leaf-dark border-leaf/30',
     ochre: 'bg-ochre/10 text-ochre border-ochre/40',
     clay: 'bg-clay/10 text-clay border-clay/40',
@@ -110,7 +110,7 @@ export function SectionHead({
 }) {
   return (
     <div className="mb-8 flex items-start gap-5">
-      <span className="data-tabular mt-1 hidden rounded-lg border border-paper-3 bg-paper-2 px-2.5 py-1 text-sm font-semibold text-ink-2 sm:block">
+      <span className="data-tabular mt-1 hidden rounded-lg border border-slate-100 bg-slate-100 px-2.5 py-1 text-sm font-semibold text-ink-2 sm:block">
         {index}
       </span>
       <div>
@@ -163,7 +163,7 @@ export function Slider({
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`rounded-2xl border border-paper-3 bg-white/60 shadow-card ${className}`}>
+    <div className={`rounded-2xl border border-slate-100 bg-white shadow-card ${className}`}>
       {children}
     </div>
   )
@@ -193,17 +193,17 @@ export function DiagnosticCard({
 }) {
   return (
     <section id={id} className={`scroll-mt-24 ${className}`}>
-      <div className="rise rounded-2xl border border-paper-3 bg-white/70 p-5 shadow-card sm:p-7">
-        <header className="mb-5 flex items-start gap-3.5">
-          <span className="data-tabular mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-panel text-xs font-bold text-leaf-3">
+      <div className="rise rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+        <header className="mb-4 flex items-start gap-2.5">
+          <span className="data-tabular mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-[11px] font-bold text-[#15803D]">
             {step}
           </span>
           <div className="min-w-0">
-            <h2 className="flex items-center gap-2 font-display text-xl font-semibold tracking-tight text-ink sm:text-2xl">
+            <h2 className="flex items-center gap-1.5 text-sm font-bold tracking-tight text-slate-900">
               {icon}
               {title}
             </h2>
-            {sub && <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-ink-3">{sub}</p>}
+            {sub && <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{sub}</p>}
           </div>
         </header>
         {children}
@@ -232,7 +232,7 @@ export function Gauge({
 }) {
   const color = `var(--color-${tone})`
   return (
-    <div className="flex h-full flex-col rounded-xl border border-paper-3 bg-paper/40 p-4">
+    <div className="flex h-full flex-col rounded-xl border border-slate-100 bg-slate-100/40 p-4">
       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">{label}</p>
       <p className="mt-1.5 font-display text-2xl font-semibold leading-tight" style={{ color }}>
         {state}
@@ -272,7 +272,7 @@ export function CropChip({
 }) {
   const color = FAMILY_COLOR[family] ?? 'var(--color-ink-3)'
   return (
-    <div className="flex min-w-[104px] flex-col items-center gap-1 rounded-xl border border-paper-3 bg-white/70 px-2 py-1.5 text-center">
+    <div className="flex min-w-[104px] flex-col items-center gap-1 rounded-xl border border-slate-100 bg-white px-2 py-1.5 text-center">
       <span className="text-[11px] font-semibold leading-tight text-ink">{name}</span>
       <div className="flex items-center gap-1">
         <i className="h-2 w-2 rounded-full" style={{ background: color }} />

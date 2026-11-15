@@ -46,13 +46,13 @@ export default function DataReadout({ climate, terrain }: Props) {
     const valueColor =
       tone === 'water' ? 'text-water' : tone === 'clay' ? 'text-clay' : tone === 'ochre' ? 'text-ochre' : 'text-leaf-dark'
     return (
-      <div className="rounded-xl border border-paper-3 bg-white/70 p-3.5 shadow-card">
-        <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold tracking-wide text-ink-2">
+      <div className="rounded-xl border border-slate-100 bg-white p-3 shadow-sm">
+        <div className="mb-1 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-500">
           {icon}
           {label}
         </div>
-        <p className={`data-tabular text-2xl font-semibold ${valueColor}`}>{value}</p>
-        <p className="mt-0.5 text-[11px] leading-snug text-ink-3">{sub}</p>
+        <p className={`data-tabular text-lg font-bold leading-tight ${valueColor}`}>{value}</p>
+        <p className="mt-0.5 text-[9px] leading-snug text-slate-500">{sub}</p>
       </div>
     )
   }
@@ -68,7 +68,7 @@ export default function DataReadout({ climate, terrain }: Props) {
       />
 
       {/* Metric cards */}
-      <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="mb-6 grid grid-cols-2 gap-2.5 @md:grid-cols-3 @4xl:grid-cols-6">
         {card(
           <CloudRain className="h-3.5 w-3.5 text-water" />,
           'Annual rainfall',
@@ -127,7 +127,7 @@ export default function DataReadout({ climate, terrain }: Props) {
       <ThenVsNow trend={climate.trend} />
 
       {/* Charts */}
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid gap-4 @2xl:grid-cols-2">
         <ChartCard
           title="Rainfall vs atmospheric water demand"
           caption="Blue bars: rain received (NASA POWER). Ochre line: ET0 — what crops lose to evaporation & transpiration. Where the line sits above the bars, the soil is spending its bank, not earning."
@@ -195,7 +195,7 @@ export default function DataReadout({ climate, terrain }: Props) {
 
 function ChartCard({ title, caption, children }: { title: string; caption: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-paper-3 bg-white/60 p-4 shadow-card">
+    <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-card">
       <div className="mb-2 flex items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold text-ink">{title}</h3>
         <Chip tone="dark">NASA POWER</Chip>
@@ -209,7 +209,7 @@ function ChartCard({ title, caption, children }: { title: string; caption: strin
 function ThenVsNow({ trend }: { trend?: DailyTrend }) {
   if (!trend) {
     return (
-      <div className="relative mb-6 overflow-hidden rounded-2xl border border-paper-3 bg-white/60 p-4 shadow-card">
+      <div className="relative mb-6 overflow-hidden rounded-2xl border border-slate-100 bg-white p-4 shadow-card">
         <div className="sweep pointer-events-none absolute inset-0 opacity-40" />
         <h3 className="text-sm font-semibold text-ink">Then vs now — what shifted in 10–15 years?</h3>
         <p className="mt-5 mb-6 text-[11px] text-ink-3">Comparing the first and last five years of NASA daily records…</p>
@@ -231,7 +231,7 @@ function ThenVsNow({ trend }: { trend?: DailyTrend }) {
     const neutral = Math.abs(delta) < (badWhenNegative ? 2 : 0.005)
     const color = neutral ? 'text-ink' : bad ? 'text-clay' : 'text-leaf'
     return (
-      <div className="rounded-xl border border-paper-3 bg-white/70 p-3">
+      <div className="rounded-xl border border-slate-100 bg-white p-3">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-3">{label}</p>
         <p className="data-tabular mt-1 text-lg font-semibold text-ink">
           {then} <span className="text-ink-3">→</span> {now}
@@ -243,12 +243,12 @@ function ThenVsNow({ trend }: { trend?: DailyTrend }) {
     )
   }
   return (
-    <div className="mb-6 rounded-2xl border border-paper-3 bg-white/60 p-4 shadow-card">
+    <div className="mb-6 rounded-2xl border border-slate-100 bg-white p-4 shadow-card">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold text-ink">Then vs now — what shifted in the last {tn.yearsSpan} years?</h3>
         <Chip tone="dark">NASA daily records · 5-yr means</Chip>
       </div>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 @2xl:grid-cols-4">
         {cell(
           'Annual rainfall',
           `${Math.round(trend.annualRain.slice(0, 5).reduce((a, b) => a + b, 0) / 5)} mm`,
@@ -296,7 +296,7 @@ function TrendCard({ climate }: { climate: ClimateFeatures }) {
 
   if (!trend) {
     return (
-      <div className="relative overflow-hidden rounded-2xl border border-paper-3 bg-white/60 p-4 shadow-card">
+      <div className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-4 shadow-card">
         <div className="sweep pointer-events-none absolute inset-0 opacity-40" />
         <h3 className="text-sm font-semibold text-ink">15-year trend</h3>
         <p className="mt-6 mb-8 text-[11px] text-ink-3">

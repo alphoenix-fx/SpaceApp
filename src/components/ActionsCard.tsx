@@ -39,7 +39,7 @@ function CropThumb({ id, name }: { id: string; name: string }) {
   const src = CROP_PHOTOS[id]
   if (!src) {
     return (
-      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-paper-3 bg-leaf/10">
+      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-slate-100 bg-leaf/10">
         <Leaf className="h-5 w-5 text-leaf" />
       </span>
     )
@@ -51,14 +51,14 @@ function CropThumb({ id, name }: { id: string; name: string }) {
       loading="lazy"
       width={56}
       height={56}
-      className="h-14 w-14 shrink-0 rounded-2xl border border-paper-3 object-cover shadow-sm"
+      className="h-14 w-14 shrink-0 rounded-2xl border border-slate-100 object-cover shadow-sm"
     />
   )
 }
 
 function AltRow({ alt }: { alt: CropAlternative }) {
   return (
-    <li className="flex items-center gap-3.5 rounded-xl border border-paper-3 bg-white/70 px-3.5 py-3">
+    <li className="flex items-center gap-3.5 rounded-xl border border-slate-100 bg-white px-3.5 py-3">
       <CropThumb id={alt.crop.id} name={alt.crop.name} />
       <div className="min-w-0 flex-1">
         <p className="flex items-baseline gap-2">
@@ -106,7 +106,7 @@ export default function ActionsCard({
       sub="Concrete options for this land, with the window to act on them."
       icon={<Leaf className="h-5 w-5 text-leaf" />}
     >
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-5 @2xl:grid-cols-2">
         {/* What to plant next */}
         <div>
           <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-ink">
@@ -120,7 +120,7 @@ export default function ActionsCard({
               ))}
             </ul>
           ) : (
-            <p className="rounded-xl border border-paper-3 bg-white/70 px-3.5 py-3 text-[13px] text-ink-2">
+            <p className="rounded-xl border border-slate-100 bg-white px-3.5 py-3 text-[13px] text-ink-2">
               No alternative crop scores better than your current rotation here — this land still suits
               what you grow. Focus on timing and the rotation notes instead.
             </p>
@@ -139,7 +139,7 @@ export default function ActionsCard({
                 <Repeat className="h-4 w-4 text-ochre" />
                 A simple two-season rotation
               </h3>
-              <div className="rounded-xl border border-paper-3 bg-white/70 p-3.5">
+              <div className="rounded-xl border border-slate-100 bg-white p-3.5">
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="rounded-lg border border-leaf/40 bg-leaf/10 px-3 py-2">
                     <p className="text-[10px] uppercase tracking-wider text-leaf-dark">Season 1</p>
@@ -164,7 +164,7 @@ export default function ActionsCard({
             </h3>
             <div className="space-y-2">
               {plantAlert && (
-                <div className="rounded-xl border border-paper-3 bg-white/70 px-3.5 py-2.5">
+                <div className="rounded-xl border border-slate-100 bg-white px-3.5 py-2.5">
                   <p className="text-[13px] font-semibold text-ink">{plantAlert.title}</p>
                   <p className="mt-0.5 text-[12px] leading-snug text-ink-2">{plantAlert.body}</p>
                 </div>
@@ -183,13 +183,13 @@ export default function ActionsCard({
                 </div>
               )}
               {irrigateAlert && (
-                <div className="rounded-xl border border-paper-3 bg-white/70 px-3.5 py-2.5">
+                <div className="rounded-xl border border-slate-100 bg-white px-3.5 py-2.5">
                   <p className="text-[13px] font-semibold text-ink">{irrigateAlert.title}</p>
                   <p className="mt-0.5 text-[12px] leading-snug text-ink-2">{irrigateAlert.body}</p>
                 </div>
               )}
               {harvestAlert && (
-                <div className="rounded-xl border border-paper-3 bg-white/70 px-3.5 py-2.5">
+                <div className="rounded-xl border border-slate-100 bg-white px-3.5 py-2.5">
                   <p className="text-[13px] font-semibold text-ink">{harvestAlert.title}</p>
                   <p className="mt-0.5 text-[12px] leading-snug text-ink-2">{harvestAlert.body}</p>
                 </div>
