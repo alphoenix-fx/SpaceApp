@@ -1,4 +1,4 @@
-import { cropById, cropWaterMid } from './crops'
+import { CROPS, cropById, cropWaterMid } from './crops'
 import { soilProfile } from './soil'
 import type {
   ClimateFeatures,
@@ -551,6 +551,178 @@ export function cropViability(cropId: string, ctx: AnalysisContext, trend?: Dail
   const climate = cropClimateScore(crop, ctx)
   const momentum = trend ? (trendMomentum(trend) - 55) * 0.35 : 0
   return Math.round(clamp(0.6 * waterScore + 0.4 * climate + momentum))
+}
+
+// ---------------------------------------------------------------------------
+// "What to plant next" — alternatives and a simple two-season rotation.
+// ---------------------------------------------------------------------------
+
+export interface CropAlternative {
+  crop: Crop
+  /** suitability 0–100 for this field */
+  score: number
+  /** plain-language reason this crop earns its place */
+  reason: string
+}
+
+/**
+ * Suitability of a single crop on this field (0–100), blending the water
+ * balance, climate fit, soil contribution and market/forage value — weighted
+ * by the farmer's own priorities. This is the "match %" shown next to each
+ * alternative crop.
+ */
+export function cropMatchScore(
+  crop: Crop,
+  ctx: AnalysisContext,
+  priorities: Priorities,
+  trend?: DailyTrend,
+): number {
+  const { climate, soil, slope } = ctx
+  const water = cropWater(crop, ctx)
+
+  // 1. Water: the risk of running short, plus how well the crop uses the rain
+  //    that actually falls here (a crop that needs far less than the land
+  //    delivers leaves potential yield on the table).
+  const riskScore = soil.irrigated
+    ? clamp(94 - water.demandMm / 16, 30, 96)
+    : clamp(100 - 150 * water.deficitRatio)
+  const demandUse = water.supplyMm > 0 ? clamp(water.demandMm / water.supplyMm, 0, 1) : 0
+  let waterScore = 0.62 * riskScore + 0.38 * demandUse * 100
+  if (!soil.irrigated) {
+    // No deficit is not the same as a comfortable margin: in a variable
+    // rainfall district a thirsty crop is a gamble, so low drought tolerance
+    // costs points even when the average year works out.
+    waterScore = Math.min(waterScore, 94)
+    if (climate.aridityIndex < 0.55) waterScore -= (3 - crop.droughtScore) * 4
+  }
+
+  // 2. Climate: graded, so drought- and heat-tolerant crops separate instead
+  //    of all landing on the same ceiling.
+  const aridityFactor = clamp(1 - climate.aridityIndex / 0.8, 0, 1)
+  const heatFactor = clamp(climate.heatMonths32 / 6, 0, 1)
+  const frostFactor = clamp(climate.frostMonths / 6, 0, 1)
+  let climateScore = 60
+  climateScore += (crop.droughtScore - 1) * 12 * aridityFactor
+  climateScore += (crop.heatScore - 1) * 10 * heatFactor
+  if (crop.season === 'winter' || crop.season === 'perennial') {
+    climateScore += (crop.frostScore - 1) * 11 * frostFactor
+  }
+  if (crop.season === 'summer' && crop.frostScore === 0) climateScore -= 8 * frostFactor
+  climateScore += (crop.rootM - 1) * 7
+  if (crop.needsIrrigation && !soil.irrigated) climateScore -= 22
+  if (crop.regime !== 'any' && crop.regime !== ctx.regime && ctx.regime !== 'any') climateScore -= 20
+  climateScore = clamp(climateScore)
+
+  // 3. Soil: nitrogen left behind, organic matter and erosion protection.
+  const soilScore = clamp(
+    42 +
+      (crop.nFix > 0 ? Math.min(28, crop.nFix / 3) : -12) +
+      crop.omScore * 9 +
+      crop.erosionScore * 6 -
+      (crop.bareAfter ? 7 : 0),
+  )
+
+  // 4. Erosion protection on this slope.
+  const erosionScore = clamp(
+    40 + crop.erosionScore * 20 - (crop.bareAfter ? 8 : 0) - slope.slopePercent * 0.8,
+  )
+
+  // 5. Market & feed value.
+  const marketScore = clamp(crop.incomeScore * 18 + crop.forageScore * 14)
+
+  // Farmer priorities decide how much each dimension counts.
+  const sliderSum =
+    priorities.water + priorities.soil + priorities.income + priorities.erosion + priorities.forage
+  const w = (v: number) => (sliderSum > 0 ? v / sliderSum : 0.2)
+  const wWater = w(priorities.water)
+  const wSoil = w(priorities.soil)
+  const wIncome = w(priorities.income)
+  const wErosion = w(priorities.erosion)
+  const wForage = w(priorities.forage)
+  const wSum = wWater + wSoil + wIncome + wErosion + wForage
+
+  const total =
+    (waterScore * wWater +
+      climateScore * 0.55 +
+      soilScore * wSoil +
+      erosionScore * wErosion +
+      marketScore * (wIncome + wForage)) /
+    (wSum + 0.55)
+
+  const momentum = trend ? (trendMomentum(trend) - 55) * 0.35 : 0
+  return Math.round(clamp(total + momentum))
+}
+
+function alternativeReason(c: Crop, ctx: AnalysisContext): string {
+  const { climate } = ctx
+  const bits: string[] = []
+  if (c.droughtScore >= 3 && climate.aridityIndex < 0.55) bits.push('drought-clever')
+  else if (c.droughtScore >= 2 && climate.aridityIndex < 0.55) bits.push('holds up in dry spells')
+  if (c.heatScore >= 2 && climate.heatMonths32 >= 3) bits.push('takes the heat at flowering')
+  if (c.frostScore >= 2 && climate.frostMonths >= 2) bits.push('frost-hardy')
+  if (c.rootM >= 1.4) bits.push('deep roots reach stored moisture')
+  if (c.nFix >= 50) bits.push('feeds the next crop with nitrogen')
+  if (c.erosionScore >= 2 && ctx.slope.slopePercent >= 4) bits.push('holds the soil on slopes')
+  if (c.forageScore >= 3) bits.push('strong hay and grazing value')
+  else if (c.forageScore >= 2) bits.push('gives hay or grazing')
+  if (c.incomeScore >= 3) bits.push('strong local market')
+  if (!bits.length) bits.push('fits this rainfall pattern')
+  return bits.slice(0, 2).join(' · ')
+}
+
+/** Rank every crop in the library for this field, best first. */
+export function rankAlternatives(
+  ctx: AnalysisContext,
+  trend: DailyTrend | undefined,
+  excludeIds: string[] = [],
+  limit = 3,
+  priorities: Priorities = { water: 70, soil: 70, income: 40, erosion: 55, forage: 30 },
+): CropAlternative[] {
+  const excluded = new Set(excludeIds)
+  const { regime, soil } = ctx
+  return CROPS.filter((c) => c.id !== 'fallow' && !excluded.has(c.id))
+    // A crop that needs irrigation is not an option on a rainfed field, and a
+    // crop from the wrong rainfall season does not belong in the list at all.
+    .filter((c) => !(c.needsIrrigation && !soil.irrigated))
+    .filter((c) => c.regime === 'any' || c.regime === regime || regime === 'any')
+    .map((c) => ({
+      crop: c,
+      score: cropMatchScore(c, ctx, priorities, trend),
+      reason: alternativeReason(c, ctx),
+    }))
+    .filter((a) => a.score >= 40)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+}
+
+export interface TwoSeasonPlan {
+  season1: CropAlternative
+  season2: CropAlternative
+  /** why this order protects the soil */
+  rationale: string
+}
+
+/**
+ * A simple two-season cycle: the strongest alternative first, then a
+ * nitrogen-fixing crop to rebuild the soil for the cereal after it.
+ */
+export function suggestTwoSeasonPlan(
+  ctx: AnalysisContext,
+  trend: DailyTrend | undefined,
+  excludeIds: string[] = [],
+  priorities: Priorities = { water: 70, soil: 70, income: 40, erosion: 55, forage: 30 },
+): TwoSeasonPlan | null {
+  const pool = rankAlternatives(ctx, trend, excludeIds, 8, priorities)
+  if (!pool.length) return null
+  const first = pool[0]
+  const legume = pool.find((a) => a.crop.family === 'legume')
+  const second = legume && legume.crop.id !== first.crop.id ? legume : pool.find((a) => a.crop.id !== first.crop.id)
+  if (!second) return null
+  const rationale =
+    second.crop.family === 'legume'
+      ? `${second.crop.name} fixes about ${second.crop.nFix} kg N/ha, which pays for the fertiliser the next cereal needs.`
+      : `${second.crop.name} breaks the pest and disease cycle of ${first.crop.name} and keeps the soil covered.`
+  return { season1: first, season2: second, rationale }
 }
 
 export function computeVerdict(

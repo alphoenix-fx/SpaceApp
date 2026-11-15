@@ -4,7 +4,6 @@ import { CROPS, cropById, cropsForRegime } from '../lib/crops'
 import { SOIL_LABELS, SOIL_PROFILES } from '../lib/soil'
 import { PRESETS } from '../lib/regions'
 import type { FarmPreset, SoilInfo, SoilTexture, TerrainInfo } from '../lib/types'
-import FarmMap, { type LayerKind } from './FarmMap'
 import { Chip, SectionHead } from './ui'
 
 interface Props {
@@ -14,25 +13,13 @@ interface Props {
   soil: SoilInfo
   terrain: TerrainInfo | null
   rotation: string[]
-  layer: LayerKind
-  mapDate: string
   onPreset: (p: FarmPreset) => void
-  onLocation: (lat: number, lon: number) => void
   onSoil: (s: SoilInfo) => void
   onSlope: (p: number) => void
   onRotation: (r: string[]) => void
-  onLayer: (l: LayerKind) => void
-  onMapDate: (d: string) => void
 }
 
 const textures: SoilTexture[] = ['sand', 'sandyLoam', 'loam', 'clayLoam', 'clay']
-
-const LAYER_OPTS: Array<{ id: LayerKind; label: string }> = [
-  { id: 'none', label: 'Satellite imagery only' },
-  { id: 'ndvi', label: 'Crop vigour (NDVI)' },
-  { id: 'lst', label: 'Land surface temperature' },
-  { id: 'truecolor', label: 'True colour (that day)' },
-]
 
 export default function FieldPanel({
   preset,
@@ -41,15 +28,10 @@ export default function FieldPanel({
   soil,
   terrain,
   rotation,
-  layer,
-  mapDate,
   onPreset,
-  onLocation,
   onSoil,
   onSlope,
   onRotation,
-  onLayer,
-  onMapDate,
 }: Props) {
   const addable = useMemo(() => {
     const regime = preset?.regime ?? 'any'
@@ -65,11 +47,11 @@ export default function FieldPanel({
       <SectionHead
         index="01"
         title="Your field"
-        sub="Pick a demo region or click the map to place your field. Then tell the tool what it cannot see from orbit — your soil, and what you already grow."
+        sub="The map above already placed your field. Now tell the tool what it cannot see from orbit — your soil, and what you actually grow."
       />
 
       {/* Region presets */}
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="mb-5 flex flex-wrap gap-2">
         {PRESETS.map((p) => (
           <button
             key={p.id}
@@ -85,48 +67,9 @@ export default function FieldPanel({
         ))}
         {!preset && (
           <span className="rounded-full border border-dashed border-ochre/50 bg-ochre/10 px-3.5 py-1.5 text-xs font-medium text-ochre">
-            Custom field — placed on map
+            Custom field — placed on the map above
           </span>
         )}
-      </div>
-
-      {/* Satellite map */}
-      <div className="mb-5">
-        <FarmMap lat={lat} lon={lon} onPick={onLocation} activePreset={preset} layer={layer} date={mapDate} />
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <div className="flex flex-wrap gap-1.5">
-            {LAYER_OPTS.map((o) => (
-              <button
-                key={o.id}
-                onClick={() => onLayer(o.id)}
-                className={`rounded-full border px-3 py-1.5 text-[11px] font-medium transition-all ${
-                  layer === o.id
-                    ? 'border-panel bg-panel text-panel-text shadow-card'
-                    : 'border-paper-3 bg-white/70 text-ink-2 hover:border-ink/40'
-                }`}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
-          {layer !== 'none' && (
-            <div className="flex items-center gap-2">
-              <label htmlFor="pass-date" className="text-[11px] font-medium text-ink-2">Pass date</label>
-              <input
-                id="pass-date"
-                type="date"
-                value={mapDate}
-                max={new Date().toISOString().slice(0, 10)}
-                onChange={(e) => onMapDate(e.target.value)}
-                className="data-tabular rounded-lg border border-paper-3 bg-white/70 px-2 py-1.5 text-[11px] text-ink"
-              />
-            </div>
-          )}
-        </div>
-        <p className="mt-2 text-[11px] text-ink-3">
-          MODIS Terra 250–1000 m imagery via NASA GIBS: flip layers to see crop vigour (NDVI), ground heat, and the
-          true-colour view. NDVI works best a few weeks into a growing season — GIBS keeps a rolling recent archive.
-        </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">

@@ -1,9 +1,11 @@
 import { lazy, Suspense, useMemo, useState } from 'react'
-import { AlertTriangle, ArrowRight, Satellite, Sprout } from 'lucide-react'
+import { AlertTriangle, ArrowRight, ChevronDown, Satellite, Sprout } from 'lucide-react'
 import { PRESETS } from './lib/regions'
-import { CROPS } from './lib/crops'
+import { CROPS, cropById } from './lib/crops'
 import { fetchClimateFeatures } from './lib/power'
 import { fetchTerrain, manualTerrain } from './lib/terrain'
+import { fetchOutlook, type Outlook } from './lib/forecast'
+import { fetchNdviPulse, type NdviPulse } from './lib/ndvi'
 import { buildStrategies, computeVerdict, dominantCropId, type AnalysisContext } from './lib/scoring'
 import { buildPlaybook } from './lib/alerts'
 import type {
@@ -15,10 +17,13 @@ import type {
   TerrainInfo,
 } from './lib/types'
 import FieldPanel from './components/FieldPanel'
-import type { LayerKind } from './components/FarmMap'
+import FieldConsole, { type ConsoleLayer } from './components/FieldConsole'
 import PrioritiesPanel from './components/PrioritiesPanel'
 import Rotations from './components/Rotations'
 import VerdictCard from './components/VerdictCard'
+import FieldPulseCard from './components/FieldPulseCard'
+import ActionsCard from './components/ActionsCard'
+import TrendCard from './components/TrendCard'
 import AlertsPanel from './components/AlertsPanel'
 import ShiftExplorer from './components/ShiftExplorer'
 import Footer from './components/Footer'
@@ -54,8 +59,11 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [climate, setClimate] = useState<ClimateFeatures | null>(null)
   const [terrain, setTerrain] = useState<TerrainInfo | null>(null)
+  const [ndvi, setNdvi] = useState<NdviPulse | null>(null)
+  const [outlook, setOutlook] = useState<Outlook | null>(null)
+  const [showDetail, setShowDetail] = useState(false)
 
-  const [layer, setLayer] = useState<LayerKind>('ndvi')
+  const [layer, setLayer] = useState<ConsoleLayer>('truecolor')
   const [mapDate, setMapDate] = useState(isoDaysAgo(45))
 
   const applyPreset = (p: FarmPreset) => {
@@ -75,6 +83,8 @@ export default function App() {
   const analyse = async (autoScroll = true) => {
     setPhase('loading')
     setError(null)
+    setNdvi(null)
+    setOutlook(null)
     try {
       const [clim, terr] = await Promise.all([
         fetchClimateFeatures(lat, lon),
@@ -83,8 +93,15 @@ export default function App() {
       setClimate(clim)
       setTerrain(terr)
       setPhase('done')
+      // Live layers are a bonus: they must never block the diagnosis.
+      void fetchNdviPulse(lat, lon)
+        .then((p) => setNdvi(p))
+        .catch(() => setNdvi(null))
+      void fetchOutlook(lat, lon, clim)
+        .then((o) => setOutlook(o))
+        .catch(() => setOutlook(null))
       if (autoScroll) {
-        setTimeout(() => document.getElementById('data')?.scrollIntoView({ behavior: 'smooth' }), 250)
+        setTimeout(() => document.getElementById('verdict')?.scrollIntoView({ behavior: 'smooth' }), 250)
       }
     } catch (e) {
       setPhase('idle')
@@ -135,11 +152,51 @@ export default function App() {
     void analyse(true)
   }
 
+  // Live numbers for the console readout (before a full scan runs).
+  const consoleReadout = useMemo(() => {
+    if (!climate) {
+      return { temperature: null, rainMm: null, soilMoisture: null, hotDays: null, loading: phase === 'loading' }
+    }
+    const month = new Date().getMonth()
+    return {
+      temperature: climate.monthly.Tavg[month] ?? null,
+      rainMm: climate.trend?.recent.rainMm ?? null,
+      soilMoisture: climate.trend?.recent.wetness ?? climate.monthly.GWETROOT[month] ?? null,
+      hotDays: climate.heatMonths32,
+      loading: false,
+    }
+  }, [climate, phase])
+
+  const headlineCrop = useMemo(() => {
+    const c = dominant ? cropById(dominant) : undefined
+    return c?.name ?? 'your crop'
+  }, [dominant])
+
+  const consoleHeadline = useMemo(() => {
+    if (verdict) return verdict.headline
+    return 'Read your fields from orbit'
+  }, [verdict])
+
   return (
     <div className="min-h-screen">
       <Nav phase={phase} />
 
-      <Hero onDemo={runDemo} />
+      <IntroBand onDemo={runDemo} />
+
+      <FieldConsole
+        lat={lat}
+        lon={lon}
+        layer={layer}
+        mapDate={mapDate}
+        onPick={pickLocation}
+        onLayer={setLayer}
+        onMapDate={setMapDate}
+        rotation={rotation}
+        cropLabel={(id) => cropById(id)?.name ?? id}
+        readout={consoleReadout}
+        headlineCrop={headlineCrop}
+        headline={consoleHeadline}
+      />
 
       <main className="mx-auto max-w-6xl px-5">
         {/* Steps 01 + 02 */}
@@ -151,15 +208,10 @@ export default function App() {
             soil={soil}
             terrain={terrain}
             rotation={rotation}
-            layer={layer}
-            mapDate={mapDate}
             onPreset={applyPreset}
-            onLocation={pickLocation}
             onSoil={setSoil}
             onSlope={(p) => setTerrain(manualTerrain(p))}
             onRotation={setRotation}
-            onLayer={setLayer}
-            onMapDate={setMapDate}
           />
           <PrioritiesPanel priorities={priorities} onChange={setPriorities} />
 
@@ -200,24 +252,73 @@ export default function App() {
             </div>
           </div>
 
-          {/* Results */}
+          {/* Results — the diagnosis: four cards, top to bottom */}
           {phase === 'done' && climate && terrain && (
-            <div className="space-y-16">
-              <Suspense
-                fallback={
-                  <div className="rounded-2xl border border-paper-3 bg-white/60 p-8 text-center shadow-card">
-                    <p className="data-tabular animate-pulse text-xs text-ink-3">loading satellite charts…</p>
-                  </div>
-                }
-              >
-                <DataReadout climate={climate} terrain={terrain} soil={soil} />
-              </Suspense>
-              {verdict && <VerdictCard verdict={verdict} />}
-              {strategies && <Rotations strategies={strategies} />}
-              {alerts.length > 0 && <AlertsPanel alerts={alerts} />}
-              {ctx && dominant && verdict && (
-                <ShiftExplorer ctx={ctx} dominantCropId={dominant} />
+            <div className="space-y-6">
+              {verdict && (
+                <VerdictCard verdict={verdict} trend={climate.trend} />
               )}
+              <FieldPulseCard
+                climate={climate}
+                trend={climate.trend}
+                ndvi={ndvi}
+                outlook={outlook}
+              />
+              {ctx && (
+                <ActionsCard
+                  ctx={ctx}
+                  trend={climate.trend}
+                  rotation={rotation}
+                  alerts={alerts}
+                  priorities={priorities}
+                />
+              )}
+              {climate.trend && <TrendCard trend={climate.trend} />}
+
+              {/* Full analysis — the deep dive, on demand */}
+              <div className="pt-4">
+                <button
+                  onClick={() => setShowDetail((v) => !v)}
+                  aria-expanded={showDetail}
+                  className="flex w-full items-center justify-between gap-3 rounded-2xl border border-paper-3 bg-white/60 px-5 py-4 text-left shadow-card transition hover:border-leaf/40"
+                >
+                  <span>
+                    <span className="block font-display text-lg font-semibold text-ink">
+                      Full analysis
+                    </span>
+                    <span className="block text-[12px] text-ink-3">
+                      30-year climate record, then-vs-now data, rotation strategies, the full season
+                      playbook and where the same crop fits better
+                    </span>
+                  </span>
+                  <ChevronDown
+                    className={`h-5 w-5 shrink-0 text-ink-3 transition-transform ${
+                      showDetail ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
+
+                {showDetail && (
+                  <div className="mt-6 space-y-12">
+                    <Suspense
+                      fallback={
+                        <div className="rounded-2xl border border-paper-3 bg-white/60 p-8 text-center shadow-card">
+                          <p className="data-tabular animate-pulse text-xs text-ink-3">
+                            loading satellite charts…
+                          </p>
+                        </div>
+                      }
+                    >
+                      <DataReadout climate={climate} terrain={terrain} soil={soil} />
+                    </Suspense>
+                    {strategies && <Rotations strategies={strategies} />}
+                    {alerts.length > 0 && <AlertsPanel alerts={alerts} />}
+                    {ctx && dominant && verdict && (
+                      <ShiftExplorer ctx={ctx} dominantCropId={dominant} />
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -245,11 +346,10 @@ function Nav({ phase }: { phase: string }) {
   const links: Array<[string, string]> = [
     ['01 Field', '#field'],
     ['02 Priorities', '#priorities'],
-    ['03 Data', '#data'],
-    ['04 Verdict', '#verdict'],
-    ['05 Adapt', '#rotations'],
-    ['06 Playbook', '#playbook'],
-    ['07 Shift', '#shift'],
+    ['03 Verdict', '#verdict'],
+    ['04 Pulse', '#pulse'],
+    ['05 Actions', '#actions'],
+    ['06 Trend', '#trend'],
   ]
   return (
     <header className="sticky top-0 z-[900] border-b border-paper-3 bg-paper/85 backdrop-blur">
@@ -267,7 +367,7 @@ function Nav({ phase }: { phase: string }) {
               key={href}
               href={href}
               className={`rounded-full px-2.5 py-1.5 text-[11px] font-medium transition hover:bg-paper-2 ${
-                ['#data', '#verdict', '#rotations', '#playbook', '#shift'].includes(href) && phase !== 'done'
+                ['#verdict', '#pulse', '#actions', '#trend'].includes(href) && phase !== 'done'
                   ? 'text-ink-3/50'
                   : 'text-ink-2'
               }`}
@@ -313,47 +413,38 @@ function BrandMark() {
   )
 }
 
-function Hero({ onDemo }: { onDemo: () => void }) {
+function IntroBand({ onDemo }: { onDemo: () => void }) {
   return (
     <section id="top" className="relative overflow-hidden bg-panel text-panel-text">
-      {/* contour art */}
-      <svg
-        className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.16]"
-        viewBox="0 0 1200 600"
-        preserveAspectRatio="xMidYMid slice"
+      {/* field photograph */}
+      <img
+        src="/images/hero-farmer.jpg"
+        alt=""
         aria-hidden
-      >
-        {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
-          <path
-            key={i}
-            d={`M -50 ${140 + i * 62} C 250 ${60 + i * 66}, 480 ${230 + i * 58}, 760 ${140 + i * 63} S 1150 ${40 + i * 70}, 1260 ${170 + i * 60}`}
-            stroke="#8cc49a"
-            strokeWidth={i % 3 === 0 ? 1.4 : 0.8}
-            fill="none"
-          />
-        ))}
-      </svg>
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-30"
+      />
+      <div className="absolute inset-0 bg-gradient-to-r from-panel via-panel/90 to-panel/55" />
       <div className="pointer-events-none absolute -top-32 right-1/4 h-96 w-96 rounded-full bg-leaf/15 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-40 left-1/3 h-96 w-96 rounded-full bg-water/10 blur-3xl" />
 
-      <div className="relative mx-auto grid max-w-6xl gap-10 px-5 py-20 lg:grid-cols-[1.15fr_0.85fr] lg:py-28">
-        <div className="rise">
+      <div className="relative mx-auto max-w-6xl px-5 py-14 lg:py-20">
+        <div className="rise max-w-2xl">
           <div className="mb-5 flex flex-wrap items-center gap-2">
             <Chip tone="ochre">NASA Space Apps 2026</Chip>
             <Chip tone="dark">Field Shift challenge</Chip>
             <Chip tone="dark">South Africa 🇿🇦</Chip>
           </div>
-          <h1 className="font-display text-4xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">
+          <h1 className="font-display text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl">
             Read your fields from orbit.
             <span className="block text-leaf-3">Plan the seasons ahead.</span>
           </h1>
           <p className="mt-5 max-w-xl text-base leading-relaxed text-panel-text/75">
-            Rainfall is shifting. Heat spells stretch. The water bank under your feet matters more every year.
-            FieldShift turns <strong className="text-panel-text">30+ years of NASA Earth observations</strong> into a
-            plain-language, side-by-side comparison of crop rotations for your exact field — scored against{' '}
-            <em>your</em> priorities, and always deferring to your judgement.
+            Rainfall is shifting. Heat spells stretch. The water bank under your feet matters more every
+            year. FieldShift turns{' '}
+            <strong className="text-panel-text">30+ years of NASA Earth observations</strong> into a
+            plain-language health check for your exact field — scored against <em>your</em> priorities,
+            and always deferring to your judgement.
           </p>
-          <div className="mt-8 flex flex-wrap items-center gap-3">
+          <div className="mt-7 flex flex-wrap items-center gap-3">
             <button
               onClick={onDemo}
               className="group flex items-center gap-2.5 rounded-full bg-leaf px-6 py-3.5 text-sm font-semibold text-white shadow-card transition hover:bg-leaf-2 hover:shadow-lift"
@@ -363,98 +454,18 @@ function Hero({ onDemo }: { onDemo: () => void }) {
               <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
             </button>
             <a
-              href="#field"
+              href="#console"
               className="rounded-full border border-panel-line px-6 py-3.5 text-sm font-semibold text-panel-text transition hover:border-leaf-3 hover:text-leaf-3"
             >
-              Start with my field
+              Open the field console
             </a>
           </div>
-          <div className="mt-9 flex flex-wrap gap-x-7 gap-y-2 text-[11px] text-panel-text/55">
+          <div className="mt-8 flex flex-wrap gap-x-7 gap-y-2 text-[11px] text-panel-text/55">
             <span><strong className="data-tabular text-panel-text/80">{CROPS.length}</strong> SA rotation crops</span>
             <span><strong className="data-tabular text-panel-text/80">5</strong> demo regions</span>
             <span><strong className="data-tabular text-panel-text/80">30+ yrs</strong> NASA POWER climatology</span>
-            <span><strong className="data-tabular text-panel-text/80">3</strong> live satellite layers</span>
+            <span><strong className="data-tabular text-panel-text/80">4</strong> live NASA satellite layers</span>
           </div>
-        </div>
-
-        {/* console card */}
-        <div className="fadein relative self-center">
-          <div className="rounded-2xl border border-panel-line bg-panel-2/80 p-5 shadow-lift backdrop-blur">
-            <div className="mb-3 flex items-center justify-between">
-              <span className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-panel-text/60">
-                <Satellite className="h-3.5 w-3.5 text-leaf-3" /> Satellite console
-              </span>
-              <span className="ping-soft h-2 w-2 rounded-full bg-leaf-3" />
-            </div>
-            {/* NDVI-ish field plot */}
-            <div className="overflow-hidden rounded-xl border border-panel-line">
-              <svg viewBox="0 0 320 150" className="block h-36 w-full" aria-hidden>
-                <rect width="320" height="150" fill="#0e140f" />
-                {[
-                  ['#1b4a2c', 8], ['#2f7d46', 16], ['#55a068', 22], ['#8cc49a', 26],
-                ].map(([color, r], idx) => (
-                  <ellipse
-                    key={idx}
-                    cx={90 + idx * 18}
-                    cy={80 + idx * 6}
-                    rx={Number(r) * 4.2}
-                    ry={Number(r) * 1.5}
-                    fill="none"
-                    stroke={color as string}
-                    strokeWidth="1.5"
-                  />
-                ))}
-                {Array.from({ length: 9 }).map((_, i) => (
-                  <line
-                    key={i}
-                    x1={230}
-                    y1={20 + i * 14}
-                    x2={310}
-                    y2={44 + i * 12}
-                    stroke="#55a068"
-                    strokeOpacity="0.35"
-                    strokeWidth="1"
-                  />
-                ))}
-                <circle cx="262" cy="76" r="3" fill="#c98a2d" />
-                <text x="18" y="26" fill="#d9e2d2" fontSize="9" fontFamily="monospace">
-                  NDVI 0.62 · MODIS Terra
-                </text>
-                <text x="18" y="42" fill="#8cc49a" fontSize="9" fontFamily="monospace">
-                  soil wetness 0.41 ▼
-                </text>
-                <text x="18" y="132" fill="#c98a2d" fontSize="9" fontFamily="monospace">
-                  ET0 5.8 mm/d · Tmax 33.2°C
-                </text>
-              </svg>
-            </div>
-            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-              {[
-                ['Rain yr', '512 mm'],
-                ['Aridity', '0.41'],
-                ['Hot mo >32°', '3'],
-              ].map(([k, v]) => (
-                <div key={k} className="rounded-lg border border-panel-line bg-panel/60 px-2 py-2">
-                  <p className="text-[9px] uppercase tracking-wider text-panel-text/50">{k}</p>
-                  <p className="data-tabular text-sm font-semibold text-panel-text">{v}</p>
-                </div>
-              ))}
-            </div>
-            <p className="mt-3 text-center text-[10px] leading-snug text-panel-text/45">
-              Example readout — run the scan on your own field for live values.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* How it works strip */}
-      <div className="relative border-t border-panel-line bg-panel/60">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-6 gap-y-2 px-5 py-4 text-[11px] text-panel-text/60">
-          <span>① Pin your field</span>
-          <span>② See what shifted (10–15 yrs)</span>
-          <span>③ Verdict: keep · adapt · shift</span>
-          <span>④ This season's playbook</span>
-          <span>⑤ Explore where it fits better</span>
         </div>
       </div>
     </section>

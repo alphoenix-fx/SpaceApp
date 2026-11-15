@@ -169,6 +169,89 @@ export function Card({ children, className = '' }: { children: ReactNode; classN
   )
 }
 
+/**
+ * The shell for the four diagnostic cards that make up the result screen:
+ * verdict → live pulse → actions → trend. Each card is numbered and titled
+ * so the farmer always knows where they are in the diagnosis.
+ */
+export function DiagnosticCard({
+  step,
+  title,
+  sub,
+  icon,
+  children,
+  id,
+  className = '',
+}: {
+  step: string
+  title: string
+  sub?: string
+  icon?: ReactNode
+  children: ReactNode
+  id?: string
+  className?: string
+}) {
+  return (
+    <section id={id} className={`scroll-mt-24 ${className}`}>
+      <div className="rise rounded-2xl border border-paper-3 bg-white/70 p-5 shadow-card sm:p-7">
+        <header className="mb-5 flex items-start gap-3.5">
+          <span className="data-tabular mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-panel text-xs font-bold text-leaf-3">
+            {step}
+          </span>
+          <div className="min-w-0">
+            <h2 className="flex items-center gap-2 font-display text-xl font-semibold tracking-tight text-ink sm:text-2xl">
+              {icon}
+              {title}
+            </h2>
+            {sub && <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-ink-3">{sub}</p>}
+          </div>
+        </header>
+        {children}
+      </div>
+    </section>
+  )
+}
+
+/** A simple labelled gauge used by the live-pulse card. */
+export function Gauge({
+  label,
+  state,
+  tone,
+  value,
+  scale,
+  tip,
+  source,
+}: {
+  label: string
+  state: string
+  tone: 'leaf' | 'ochre' | 'clay' | 'water'
+  value: string
+  scale?: { pct: number; caption: string }
+  tip: string
+  source?: string
+}) {
+  const color = `var(--color-${tone})`
+  return (
+    <div className="flex h-full flex-col rounded-xl border border-paper-3 bg-paper/40 p-4">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">{label}</p>
+      <p className="mt-1.5 font-display text-2xl font-semibold leading-tight" style={{ color }}>
+        {state}
+      </p>
+      <p className="data-tabular mt-0.5 text-sm font-semibold text-ink">{value}</p>
+      {scale && (
+        <div className="mt-3">
+          <div className="scorebar h-2">
+            <i style={{ width: `${Math.max(2, Math.min(100, scale.pct))}%`, background: color }} />
+          </div>
+          <p className="mt-1 text-[10px] uppercase tracking-wider text-ink-3">{scale.caption}</p>
+        </div>
+      )}
+      <p className="mt-3 flex-1 text-[12px] leading-snug text-ink-2">{tip}</p>
+      {source && <p className="mt-2 text-[10px] leading-tight text-ink-3">{source}</p>}
+    </div>
+  )
+}
+
 export const FAMILY_COLOR: Record<string, string> = {
   grass: 'var(--color-leaf)',
   legume: 'var(--color-ochre)',

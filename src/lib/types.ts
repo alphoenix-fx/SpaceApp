@@ -138,6 +138,12 @@ export interface DailyTrend {
     wetnessDelta: number
     hotDaysDelta: number
     tmaxDelta: number
+    /** days the wet-season onset has moved (+ = later) */
+    onsetShiftDays: number
+    /** median onset date of the first 5 seasons, e.g. "12 Nov" */
+    onsetThen: string | null
+    /** median onset date of the last 5 seasons */
+    onsetNow: string | null
   }
   /** Most recent observed days (POWER daily lags ~1 week) */
   recent: {

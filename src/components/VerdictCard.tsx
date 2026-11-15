@@ -1,66 +1,113 @@
-import { AlertTriangle, CheckCircle2, MoveRight, ShieldAlert } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, MoveRight, ShieldAlert, Sparkles } from 'lucide-react'
 import type { Verdict } from '../lib/scoring'
-import { Chip, ScoreRing } from './ui'
+import { verdictSentence } from '../lib/diagnosis'
+import type { DailyTrend } from '../lib/types'
+import { Chip, DiagnosticCard } from './ui'
 
 // ---------------------------------------------------------------------------
-// The traffic-light verdict: Keep / Adapt / Shift.
+// Card 1 — the top verdict: Keep / Adapt / Shift, in one glance.
 // ---------------------------------------------------------------------------
 
 const LEVEL_STYLE = {
   keep: {
-    bg: 'bg-leaf/10 border-leaf/40',
+    ring: 'border-leaf',
+    bg: 'bg-leaf',
+    softBg: 'bg-leaf/10',
+    border: 'border-leaf/40',
     icon: CheckCircle2,
     iconColor: 'text-leaf',
-    chip: 'leaf' as const,
     label: 'KEEP',
-    labelLong: 'Keep — conditions still suit this plan',
+    tag: 'Still a good fit',
   },
   adapt: {
-    bg: 'bg-ochre/10 border-ochre/40',
+    ring: 'border-ochre',
+    bg: 'bg-ochre',
+    softBg: 'bg-ochre/10',
+    border: 'border-ochre/40',
     icon: AlertTriangle,
     iconColor: 'text-ochre',
-    chip: 'ochre' as const,
     label: 'ADAPT',
-    labelLong: 'Adapt — viable, but the pressure is visible',
+    tag: 'Workable, but tightening',
   },
   shift: {
-    bg: 'bg-clay/10 border-clay/40',
+    ring: 'border-clay',
+    bg: 'bg-clay',
+    softBg: 'bg-clay/10',
+    border: 'border-clay/40',
     icon: ShieldAlert,
     iconColor: 'text-clay',
-    chip: 'clay' as const,
     label: 'SHIFT',
-    labelLong: 'Shift — conditions are moving away from this plan',
+    tag: 'Time to change plan',
   },
 }
 
-export default function VerdictCard({ verdict }: { verdict: Verdict }) {
+/**
+ * One plain-English sentence that says what changed and what it means for
+ * the crop the farmer is growing right now.
+ */
+export default function VerdictCard({
+  verdict,
+  trend,
+}: {
+  verdict: Verdict
+  trend?: DailyTrend
+}) {
   const s = LEVEL_STYLE[verdict.level]
+  const Icon = s.icon
+  const summary = verdictSentence(verdict, trend, verdict.dominantCrop.toLowerCase())
+
   return (
-    <section id="verdict" className="scroll-mt-24">
-      <div className={`rise relative overflow-hidden rounded-2xl border ${s.bg} bg-white/70 p-6 shadow-card sm:p-8`}>
-        <div className="grid gap-6 sm:grid-cols-[auto_1fr] sm:items-start">
-          <div className="flex items-center gap-4">
-            <ScoreRing score={verdict.score} size={92} />
-            <div className="sm:hidden">
-              <TrafficPill level={verdict.level} />
-            </div>
+    <DiagnosticCard
+      id="verdict"
+      step="1"
+      title="The verdict for this field"
+      sub="One answer first — then the details that justify it."
+      icon={<Sparkles className="h-5 w-5 text-ochre" />}
+    >
+      <div className="grid gap-6 lg:grid-cols-[230px_1fr] lg:items-start">
+        {/* Score badge */}
+        <div className="flex flex-col items-center">
+          <div
+            className={`flex w-full flex-col items-center rounded-2xl border-4 ${s.ring} ${s.softBg} px-4 py-6`}
+          >
+            <span className="data-tabular font-display text-6xl font-semibold leading-none text-ink">
+              {verdict.score}
+              <span className="text-2xl text-ink-3">%</span>
+            </span>
+            <span className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-3">
+              Crop suitability
+            </span>
+            <span
+              className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold tracking-widest text-white ${s.bg}`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {s.label}
+            </span>
           </div>
-          <div>
-            <div className="mb-2 hidden items-center gap-3 sm:flex">
-              <TrafficPill level={verdict.level} />
-              <span className="text-xs text-ink-3">viability of your current crop plan</span>
-            </div>
-            <h3 className="font-display text-2xl font-semibold leading-tight text-ink sm:text-3xl">
-              {verdict.headline}
-            </h3>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-2">{verdict.body}</p>
-            {verdict.trendNote && (
-              <p className="mt-3 flex max-w-2xl items-start gap-2 rounded-xl bg-panel/90 px-3.5 py-2.5 text-[12px] leading-snug text-panel-text">
-                <MoveRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-leaf-3" />
-                {verdict.trendNote}
-              </p>
-            )}
-            <div className="mt-4 flex flex-wrap gap-2">
+          <p className="mt-2 text-center text-[11px] leading-snug text-ink-3">
+            {s.tag} · <span className="font-medium text-ink-2">{verdict.dominantCrop}</span>
+          </p>
+        </div>
+
+        {/* Headline + summary + drivers */}
+        <div>
+          <h3 className="font-display text-2xl font-semibold leading-tight text-ink sm:text-[28px]">
+            {verdict.headline}
+          </h3>
+          <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-ink-2">{summary}</p>
+
+          {verdict.trendNote && (
+            <p className="mt-3 flex max-w-2xl items-start gap-2 rounded-xl bg-panel/90 px-3.5 py-2.5 text-[12px] leading-snug text-panel-text">
+              <MoveRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-leaf-3" />
+              {verdict.trendNote}
+            </p>
+          )}
+
+          <div className="mt-4">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">
+              What drove the score
+            </p>
+            <div className="flex flex-wrap gap-2">
               {verdict.drivers.map((d) => (
                 <Chip key={d.label} tone={d.score < 50 ? 'clay' : d.score < 70 ? 'ochre' : 'leaf'}>
                   {d.label} · {d.score}
@@ -68,23 +115,13 @@ export default function VerdictCard({ verdict }: { verdict: Verdict }) {
               ))}
             </div>
           </div>
+
+          <p className="mt-4 text-[11px] leading-snug text-ink-3">
+            The score weighs water balance, climate fit, soil health, erosion risk, income and forage
+            against the priorities you set. It supports your judgement — it never replaces it.
+          </p>
         </div>
       </div>
-    </section>
-  )
-}
-
-function TrafficPill({ level }: { level: 'keep' | 'adapt' | 'shift' }) {
-  const s = LEVEL_STYLE[level]
-  const Icon = s.icon
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold tracking-widest text-white ${
-        level === 'keep' ? 'bg-leaf' : level === 'adapt' ? 'bg-ochre' : 'bg-clay'
-      }`}
-    >
-      <Icon className="h-3.5 w-3.5" />
-      {s.label}
-    </span>
+    </DiagnosticCard>
   )
 }

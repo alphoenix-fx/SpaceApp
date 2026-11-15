@@ -25,6 +25,21 @@ export const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'A
 
 const MONTH_DAYS = [31, 28.25, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
+/** The three consecutive wettest months of the year (month indices). */
+function wettestMonths(monthlyP: number[]): number[] {
+  let best = 0
+  let bestSum = -1
+  for (let m = 0; m < 12; m++) {
+    const sum =
+      (monthlyP[m] ?? 0) + (monthlyP[(m + 1) % 12] ?? 0) + (monthlyP[(m + 2) % 12] ?? 0)
+    if (sum > bestSum) {
+      bestSum = sum
+      best = m
+    }
+  }
+  return [best, (best + 1) % 12, (best + 2) % 12]
+}
+
 interface ClimResponse {
   properties: { parameter: Record<string, Record<string, number>> }
   header?: { sources?: string[] }
@@ -175,7 +190,7 @@ export async function fetchClimateFeatures(lat: number, lon: number): Promise<Cl
 
   if (dailyJson) {
     try {
-      features.trend = buildTrend(dailyJson)
+      features.trend = buildTrend(dailyJson, wettestMonths(monthlyP))
     } catch {
       /* trends are a bonus layer; ignore failures */
     }
@@ -294,7 +309,7 @@ function monthlyTempAggregates(data: DailyResponse): {
   }
 }
 
-function buildTrend(data: DailyResponse): DailyTrend {
+function buildTrend(data: DailyResponse, wetSeasonMonths: number[]): DailyTrend {
   const P = data.properties.parameter
   const rain = P.PRECTOTCORR ?? {}
   const tmax = P.T2M_MAX ?? {}
@@ -332,10 +347,20 @@ function buildTrend(data: DailyResponse): DailyTrend {
     byYearWetN.set(y, (byYearWetN.get(y) ?? 0) + 1)
   }
 
-  // Use complete calendar years only (derived from the returned date keys)
+  // Use complete calendar years only (derived from the returned date keys).
+  // The daily window starts mid-month, so the first year is partial — a
+  // partial year would drag the "then" average down and fake a big trend.
   const allYears = new Set<number>()
-  for (const date of Object.keys(rain)) allYears.add(Number(date.slice(0, 4)))
-  const years = [...allYears].filter((y) => y !== new Date().getUTCFullYear()).sort((a, b) => a - b)
+  const daysPerYear = new Map<number, number>()
+  for (const date of Object.keys(rain)) {
+    const y = Number(date.slice(0, 4))
+    allYears.add(y)
+    daysPerYear.set(y, (daysPerYear.get(y) ?? 0) + 1)
+  }
+  const currentYear = new Date().getUTCFullYear()
+  const years = [...allYears]
+    .filter((y) => y !== currentYear && (daysPerYear.get(y) ?? 0) >= 300)
+    .sort((a, b) => a - b)
   const annualRain = years.map((y) => byYearRain.get(y) ?? 0)
   const heatDays = years.map((y) => byYearHeat.get(y) ?? 0)
   const growingWetness = years.map((y) => {
@@ -360,6 +385,59 @@ function buildTrend(data: DailyResponse): DailyTrend {
       den += (xs[i] - mx) ** 2
     }
     return den > 0 ? (numr / den) * 10 : 0 // per decade
+  }
+
+  // ---- Wet-season onset per season -------------------------------------
+  // The first day inside the wet-season window with 20 mm or more of rain in
+  // the preceding week — the "planting rain" farmers actually wait for.
+  // Stored as an offset (days) from the start of the season's window so that
+  // seasons in different years can be compared directly.
+  const ONSET_RAIN_MM = 20
+  const win = wetSeasonMonths.length ? wetSeasonMonths : [9, 10, 11]
+  const wraps = win.some((m) => m >= 10) && win.some((m) => m <= 2)
+  const onsetOffsets = new Map<number, number>() // season year → days into the window
+  {
+    const keys = Object.keys(rain).sort()
+    const rainOf = keys.map((k) => num(rain[k]) ?? 0)
+    for (let i = 0; i < keys.length; i++) {
+      const d = keys[i]
+      const mo = Number(d.slice(4, 6)) - 1
+      if (!win.includes(mo)) continue
+      const yr = Number(d.slice(0, 4))
+      const season = wraps ? (mo >= 10 ? yr + 1 : yr) : yr
+      if (onsetOffsets.has(season)) continue
+      let sum = 0
+      for (let k = Math.max(0, i - 6); k <= i; k++) sum += rainOf[k]
+      if (sum >= ONSET_RAIN_MM) {
+        // The season starts in the window's first month; a window that wraps
+        // the year boundary (Nov–Jan) starts in November of the prior year.
+        const startMonth = wraps ? Math.min(...win.filter((m) => m >= 10)) : Math.min(...win)
+        const startYear = wraps && mo >= 10 ? yr : yr - 1
+        const start = Date.UTC(startYear, startMonth, 1)
+        const day = Date.UTC(yr, mo, Number(d.slice(6, 8)))
+        onsetOffsets.set(season, Math.round((day - start) / 86400000))
+      }
+    }
+  }
+  const onsetSeasons = [...onsetOffsets.keys()].sort((a, b) => a - b)
+  const onsetValues = onsetSeasons.map((s) => onsetOffsets.get(s)!)
+  const medianOf = (xs: number[]): number => {
+    if (!xs.length) return 0
+    const s = [...xs].sort((a, b) => a - b)
+    const m = Math.floor(s.length / 2)
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2
+  }
+  const onsetThenOffset = medianOf(onsetValues.slice(0, Math.min(5, onsetValues.length)))
+  const onsetNowOffset = medianOf(onsetValues.slice(-Math.min(5, onsetValues.length)))
+  const onsetShiftDays = Math.round(onsetNowOffset - onsetThenOffset)
+
+  /** Turn an offset (days into the season window) into a readable date. */
+  const onsetLabel = (offset: number): string | null => {
+    if (!offset && offset !== 0) return null
+    const startMonth = wraps ? Math.min(...win.filter((m) => m >= 10)) : Math.min(...win)
+    const base = Date.UTC(2019, startMonth, 1)
+    const d = new Date(base + offset * 86400000)
+    return `${d.getUTCDate()} ${MONTH_LABELS[d.getUTCMonth()]}`
   }
 
   const recent = annualRain.slice(-5)
@@ -413,6 +491,9 @@ function buildTrend(data: DailyResponse): DailyTrend {
       wetnessDelta: nowWet - thenWet,
       hotDaysDelta: nowHot - thenHot,
       tmaxDelta: nowTmax - thenTmax,
+      onsetShiftDays,
+      onsetThen: onsetLabel(onsetThenOffset),
+      onsetNow: onsetLabel(onsetNowOffset),
     },
     recent: {
       days: lastDates.length,

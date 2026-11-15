@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Unrelated prototype workspace (separate Google AI Studio app)
+ExtraUI
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
