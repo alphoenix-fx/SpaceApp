@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Loader2, MousePointerClick, Pause, Play } from 'lucide-react'
+import { Loader2, Minus, MousePointerClick, Pause, Play, Plus } from 'lucide-react'
 import type { PlanetarySite } from '../data/planetaryData'
 import {
   buildEquirectTexture,
@@ -15,10 +15,16 @@ import {
 // genuine rotating sphere rather than a flat map in a circle. Sites are
 // projected onto the sphere, and the vertical-farming layer paints the flat
 // (< 5° slope) plains that a greenhouse could stand on.
+//
+// Zoom magnifies the visible hemisphere: at 1× the whole planet is in frame,
+// and as you zoom the limb moves off-screen for a close-up view of the
+// surface, exactly like looking down at a globe from low orbit.
 // ---------------------------------------------------------------------------
 
 const BUFFER = 520 // internal resolution of the pixel loop
 const DEG = Math.PI / 180
+const ZOOM_MIN = 1
+const ZOOM_MAX = 4
 
 interface Props {
   planet: 'mars' | 'moon'
@@ -58,11 +64,20 @@ export default function PlanetGlobe({
   const spinRef = useRef(true)
   const dirtyRef = useRef(true)
   const sizeRef = useRef(600)
+  const zoomRef = useRef(1)
 
   const [loading, setLoading] = useState(true)
   const [progress, setProgress] = useState({ loaded: 0, total: 0 })
   const [spinning, setSpinning] = useState(true)
   const [textureReady, setTextureReady] = useState(false)
+  const [zoom, setZoom] = useState(1)
+
+  const setZoomLevel = useCallback((next: number) => {
+    const clamped = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next))
+    zoomRef.current = clamped
+    setZoom(clamped)
+    dirtyRef.current = true
+  }, [])
 
   // ---- texture ------------------------------------------------------------
   useEffect(() => {
@@ -77,11 +92,11 @@ export default function PlanetGlobe({
     const source: PlanetTextureSource = PLANET_TEXTURES[planet]
     // Mobile keeps the lighter pyramid; desktop refines it.
     const isSmall = typeof window !== 'undefined' && window.innerWidth < 768
-    const zoom = isSmall ? 2 : 3
+    const zoomLevel = isSmall ? 2 : 3
 
     void buildEquirectTexture(
       source,
-      zoom,
+      zoomLevel,
       (loaded, total) => {
         if (!cancelled) setProgress({ loaded, total })
       },
@@ -136,7 +151,7 @@ export default function PlanetGlobe({
   // ---- projection helpers -------------------------------------------------
   const project = useCallback((latDeg: number, lonDeg: number) => {
     const size = sizeRef.current
-    const R = size * 0.4
+    const R = size * 0.4 * zoomRef.current
     const cx = size / 2
     const cy = size / 2
     const { lon: lon0, lat: lat0 } = viewRef.current
@@ -159,13 +174,13 @@ export default function PlanetGlobe({
 
     const paint = () => {
       const canvas = canvasRef.current
-      const wrap = wrapRef.current
-      if (!canvas || !wrap) return
+      if (!canvas) return
       const ctx = canvas.getContext('2d')
       if (!ctx) return
 
       const size = sizeRef.current
-      const R = size * 0.4
+      const zoomLevel = zoomRef.current
+      const R = size * 0.4 * zoomLevel
       const cx = size / 2
       const cy = size / 2
       const { lon: lon0, lat: lat0 } = viewRef.current
@@ -198,10 +213,11 @@ export default function PlanetGlobe({
       const baseG = planet === 'mars' ? 82 : 136
       const baseB = planet === 'mars' ? 54 : 134
 
+      const bufR = BUFFER * 0.4 * zoomLevel
       for (let py = 0; py < BUFFER; py++) {
-        const ny = (BUFFER / 2 - py) / (BUFFER * 0.4)
+        const ny = (BUFFER / 2 - py) / bufR
         for (let px = 0; px < BUFFER; px++) {
-          const nx = (px - BUFFER / 2) / (BUFFER * 0.4)
+          const nx = (px - BUFFER / 2) / bufR
           const r2 = nx * nx + ny * ny
           const i = (py * BUFFER + px) * 4
           if (r2 > 1) {
@@ -379,7 +395,7 @@ export default function PlanetGlobe({
         view.lon += dLon * 0.12
         view.lat += (target.lat - view.lat) * 0.12
         dirtyRef.current = true
-      } else if (spinRef.current) {
+      } else if (spinRef.current && zoomRef.current <= 1.05) {
         view.lon += (dt / 1000) * 3.2
         dirtyRef.current = true
       }
@@ -394,6 +410,19 @@ export default function PlanetGlobe({
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
   }, [planet, project, sites, selectedSiteId, verticalFarming, flatZoneKm, slopeDeg])
+
+  // ---- wheel zoom (non-passive so we can prevent page scroll) --------------
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const step = e.deltaY > 0 ? -0.25 : 0.25
+      setZoomLevel(zoomRef.current + step)
+    }
+    canvas.addEventListener('wheel', onWheel, { passive: false })
+    return () => canvas.removeEventListener('wheel', onWheel)
+  }, [setZoomLevel])
 
   // ---- interaction --------------------------------------------------------
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -447,6 +476,7 @@ export default function PlanetGlobe({
   }
 
   const credit = PLANET_TEXTURES[planet].credit
+  const bodyName = planet === 'mars' ? 'Mars' : 'Moon'
 
   return (
     <div ref={wrapRef} className="relative w-full h-full flex items-center justify-center bg-slate-950">
@@ -457,36 +487,89 @@ export default function PlanetGlobe({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
         className="touch-none cursor-grab active:cursor-grabbing"
-        aria-label={`Interactive 3D ${planet} globe`}
+        aria-label={`Interactive 3D ${bodyName} globe`}
       />
 
-      {/* Spin control */}
-      <button
-        type="button"
-        onClick={() => {
-          spinRef.current = !spinRef.current
-          setSpinning(spinRef.current)
-          dirtyRef.current = true
-        }}
-        title={spinning ? 'Pause rotation' : 'Auto-rotate globe'}
-        aria-label={spinning ? 'Pause rotation' : 'Auto-rotate globe'}
-        className="absolute top-3 right-3 z-10 flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 text-slate-800 shadow-md transition hover:bg-white cursor-pointer"
-      >
-        {spinning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-      </button>
+      {/* Spin + zoom controls */}
+      <div className="absolute top-3 right-3 z-10 flex flex-col gap-1.5">
+        <button
+          type="button"
+          onClick={() => {
+            spinRef.current = !spinRef.current
+            setSpinning(spinRef.current)
+            dirtyRef.current = true
+          }}
+          title={spinning ? 'Pause rotation' : 'Auto-rotate globe'}
+          aria-label={spinning ? 'Pause rotation' : 'Auto-rotate globe'}
+          className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 text-slate-800 shadow-md transition hover:bg-white cursor-pointer"
+        >
+          {spinning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+        </button>
+        <button
+          type="button"
+          onClick={() => setZoomLevel(zoomRef.current + 0.5)}
+          disabled={zoom >= ZOOM_MAX}
+          title="Zoom in"
+          aria-label="Zoom in"
+          className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 text-slate-800 shadow-md transition hover:bg-white disabled:opacity-40 cursor-pointer"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setZoomLevel(zoomRef.current - 0.5)}
+          disabled={zoom <= ZOOM_MIN}
+          title="Zoom out"
+          aria-label="Zoom out"
+          className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 text-slate-800 shadow-md transition hover:bg-white disabled:opacity-40 cursor-pointer"
+        >
+          <Minus className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Zoom level readout */}
+      <div className="absolute bottom-7 right-4 z-10 hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/95 shadow-md text-[11px] font-mono tabular-nums text-slate-800 font-medium">
+        <span>
+          Zoom {zoom.toFixed(1)}×
+        </span>
+      </div>
 
       {/* Loading / attribution */}
       {loading && (
-        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2 text-slate-300 pointer-events-none">
-          <Loader2 className="w-5 h-5 animate-spin text-[#1DB954]" />
-          <p className="data-tabular text-[11px]">
-            Loading NASA {planet === 'mars' ? 'Mars' : 'Moon'} Trek mosaic…
-          </p>
-          {progress.total > 0 && (
-            <p className="data-tabular text-[10px] text-slate-500">
-              {progress.loaded}/{progress.total} tiles
-            </p>
-          )}
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm px-4">
+          <div className="w-full max-w-sm rounded-2xl border border-emerald-200 bg-white p-5 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50">
+                <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
+              </span>
+              <div className="min-w-0">
+                <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-700">
+                  NASA {bodyName} Trek
+                </span>
+                <h3 className="mt-2 text-sm font-bold text-slate-900">
+                  Please wait — rendering the {bodyName} globe
+                </h3>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-600">
+                  The {bodyName === 'Mars' ? 'Viking MDIM' : 'LRO WAC'} global mosaic is being stitched
+                  from NASA Trek tiles and projected onto a 3D sphere. This can take a moment on a
+                  slow connection.
+                </p>
+                {progress.total > 0 && (
+                  <div className="mt-3">
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-emerald-500 transition-all duration-200"
+                        style={{ width: `${Math.round((progress.loaded / progress.total) * 100)}%` }}
+                      />
+                    </div>
+                    <p className="data-tabular mt-1 text-[10px] text-slate-500">
+                      {progress.loaded} / {progress.total} tiles
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -494,7 +577,7 @@ export default function PlanetGlobe({
         <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-3 pointer-events-none">
           <span className="flex items-center gap-1.5 rounded-full bg-slate-900/80 px-2.5 py-1 text-[9px] text-slate-400 backdrop-blur">
             <MousePointerClick className="w-3 h-3" />
-            Drag to rotate · tap a site to select
+            Drag to rotate · scroll to zoom · tap a site to select
           </span>
           <span className="rounded-full bg-slate-900/80 px-2.5 py-1 text-[9px] text-slate-400 backdrop-blur">
             {credit}

@@ -453,7 +453,7 @@ export default function App() {
               }`}
             >
               <Leaf className="w-3.5 h-3.5 shrink-0" />
-              <span>FieldShift Engine</span>
+              <span>Smart Farm Engine</span>
             </button>
           </div>
 

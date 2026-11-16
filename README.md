@@ -1,10 +1,10 @@
-# 🛰️ FieldShift — Planetary Innovation Agency
+# 🛰️ Smart Farm — Planetary Innovation Agency
 
-A **decision-support web app** for South African farmers, built for the
+A **decision-support web app** for farmers, built for the
 [NASA International Space Apps Challenge 2026](https://www.spaceappschallenge.org/2026/challenges/adapting-farms-with-nasa-data/)
 challenge **“Field Shift: Adapting Farms with NASA Data.”**
 
-FieldShift turns NASA Earth observations into a plain-language **Keep · Adapt ·
+Smart Farm turns NASA Earth observations into a plain-language **Keep · Adapt ·
 Shift** verdict for an exact field: will the current crop plan hold as this
 place changes, what should change if it won't, and where in South Africa the
 same crop fits better. It scores **crop-rotation strategies** against
@@ -14,14 +14,14 @@ agricultural expertise.
 
 ---
 
-## Architecture — the console, plus the FieldShift engine
+## Architecture — the console, plus the Smart Farm engine
 
 The app is one React + Vite codebase with two cooperating halves:
 
 | Layer | What it is |
 | --- | --- |
 | **Planetary console** *(main app)* | The full-bleed satellite map, the Earth / Mars / Moon mode switcher, global place search, the live **NASA POWER** telemetry drawer (suitability ring, live conditions vs. crop ideals, crop-shift options, 10-year dual trend) and the **Export Simple Farm Report** modal. |
-| **FieldShift engine** *(add-on)* | Mounted as a second tab in the same right-hand drawer. A deeper diagnosis for the *same* pinned field: 30-year POWER climatology, a 15-year daily archive, the Keep/Adapt/Shift verdict, live field pulse, alternative crops with a 2-season plan, the then-vs-now trend, rotation strategies, the season playbook and the field-shift explorer. |
+| **Smart Farm engine** *(add-on)* | Mounted as a second tab in the same right-hand drawer. A deeper diagnosis for the *same* pinned field: 30-year POWER climatology, a 15-year daily archive, the Keep/Adapt/Shift verdict, live field pulse, alternative crops with a 2-season plan, the then-vs-now trend, rotation strategies, the season playbook and the field-shift explorer. |
 
 Both halves share one map, one coordinate state and one theme — clicking the
 map or searching for a town moves both. The console answers *"what is it like
@@ -36,7 +36,7 @@ should I plant and when?"*
 2. **Live Console** *(default tab)* — NASA POWER telemetry for that point:
    suitability index for the selected crop, root-zone moisture / temperature /
    rainfall against that crop's ideal ranges, top alternatives, and the trend.
-3. **FieldShift Engine** *(add-on tab)* — set your soil and rotation, weight
+3. **Smart Farm engine** *(add-on tab)* — set your soil and rotation, weight
    your priorities, then run the full diagnosis:
    - **Top verdict** — colour-coded badge + one plain-English sentence.
    - **Live field pulse** — root-zone soil moisture, MODIS **NDVI** plant health
@@ -49,7 +49,7 @@ should I plant and when?"*
 
 ## What it does (mapped to the challenge brief)
 
-| Challenge asks for | FieldShift delivers |
+| Challenge asks for | Smart Farm delivers |
 | --- | --- |
 | NASA Earth observations | NASA **POWER** agroclimatology (30+ yr normals + a 15-yr daily archive) for the exact field point; **MODIS Terra** (GIBS) true-colour, **NDVI 8-day 250 m**, **NDVI 16-day 2000–present**, **Land Surface Temperature** and **GFSAD cropland extent** layers; **Copernicus DEM** (via Open-Meteo) elevation → slope → erosion risk; **NASA Trek** orbital mosaics for the Mars and Moon modes |
 | Pin the farm, pick crops | Full-bleed interactive satellite map, draggable pin, global place search, sample global benchmark farms, a 15 km **OpenStreetMap farmland scan**, an **adjustable analysis catchment** (0.5–50 km, default 2.5 km), then one of 5 SA demo regions — or your own spot — and the rotation you actually grow |
@@ -159,7 +159,7 @@ src/
     nasaPowerApi.ts     fast NASA POWER daily pass → telemetry + suitability
     reverseGeocode.ts   BigDataCloud + Nominatim place lookup
     overpassFarms.ts    OpenStreetMap farmland scan
-  lib/                  the FieldShift engine's data layer
+  lib/                  the Smart Farm engine's data layer
     power.ts            NASA POWER client, Hargreaves ET₀, climate features,
                         then/now trend, wet-season onset shift
     ndvi.ts             GIBS tile sampling → field NDVI vs prior years
@@ -180,7 +180,7 @@ src/
                         crop shift, dual trend, export CTA
     DualTrendChart.tsx      hoverable 10-year dual-line chart
     SmsReportModal.tsx      printable / copyable farm report
-    FieldShiftAddon.tsx     the add-on tab: hosts the whole FieldShift engine
+    FieldShiftAddon.tsx     the add-on tab: hosts the whole Smart Farm engine
     VerdictCard.tsx         traffic-light Keep / Adapt / Shift + drivers
     FieldPulseCard.tsx      moisture / NDVI gauges + 14-day outlook
     ActionsCard.tsx         alternative crops (photos), 2-season plan, when to act
@@ -229,5 +229,5 @@ src/
 ---
 
 Built with 💚 by the team for **NASA Space Apps 2026** · powered by NASA open
-data. FieldShift *supports* — never replaces — farmer judgement and local
+data. Smart Farm *supports* — never replaces — farmer judgement and local
 agricultural expertise.

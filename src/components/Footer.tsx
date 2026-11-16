@@ -102,7 +102,7 @@ export default function Footer() {
 
         <div className="mt-10 rounded-2xl border border-clay/30 bg-clay/5 px-4 py-3.5">
           <p className="text-xs leading-relaxed text-ink-2">
-            <strong>FieldShift is a decision-support tool.</strong> It reveals patterns and possibilities from NASA
+            <strong>Smart Farm is a decision-support tool.</strong> It reveals patterns and possibilities from NASA
             Earth observations — it does not replace farmer judgement, local agricultural expertise, soil tests, or
             cultivar trials. Scores are comparative indications built on typical agronomy values; always validate
             suggestions with your local extension officer or agronomist.
@@ -112,7 +112,7 @@ export default function Footer() {
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 text-[11px] text-ink-3">
           <p>
             Built for the <strong>NASA International Space Apps Challenge 2026</strong> — challenge:{' '}
-            <em>Field Shift: Adapting Farms with NASA Data</em>. South Africa team.
+            <em>Field Shift: Adapting Farms with NASA Data</em>.
           </p>
           <div className="flex items-center gap-2">
             <a

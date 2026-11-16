@@ -149,7 +149,7 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
           <Sprout className="w-4.5 h-4.5 text-white" />
         </div>
         <h1 className="text-sm sm:text-base font-bold tracking-tight text-white truncate whitespace-nowrap">
-          Planetary Innovation Agency — Field Shift
+          Smart Farm
         </h1>
       </div>
 
